@@ -115,3 +115,50 @@ jobs:
 
       - name: Apply
         run: terraform apply -auto-approve
+
+        name: Terraform CI/CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform action: apply or destroy'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::097635932419:role/github-oidc-terraform
+          aws-region: us-east-1
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform -chdir=infra init
+
+      - name: Terraform Plan
+        run: terraform -chdir=infra plan -input=false
+
+      - name: Terraform Apply/Destroy
+        run: |
+          if [ "${{ github.event.inputs.action }}" == "destroy" ]; then
+            terraform -chdir=infra destroy -auto-approve
+          else
+            terraform -chdir=infra apply -auto-approve
+          fi
