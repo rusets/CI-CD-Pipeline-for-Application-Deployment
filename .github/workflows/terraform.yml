@@ -1,92 +1,117 @@
-name: Terraform
+name: Terraform CI/CD with OIDC
 
 on:
-  push:
-    branches: [ "main" ]
-    paths:
-      - "infra/**"
-      - ".github/workflows/terraform.yml"
+  # Plan on pull requests, apply on pushes to main
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
     paths:
-      - "infra/**"
-      - ".github/workflows/terraform.yml"
-  workflow_dispatch:
+      - 'infra/**'
+      - '.github/workflows/terraform.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/terraform.yml'
 
-# Нужны права для OIDC
 permissions:
-  id-token: write
-  contents: read
+  id-token: write   # needed for OIDC
+  contents: read    # to checkout the repo
+  pull-requests: write  # so we can post a plan summary on PRs (optional)
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
   TF_IN_AUTOMATION: true
+  TF_INPUT: false
+  WORKDIR: infra
+  # Hard-coded role ARN (you can move to a repo secret/variable if you prefer)
+  AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
+  AWS_REGION: us-east-1
 
 jobs:
   plan:
-    name: Terraform Plan
+    name: terraform plan (PR)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: infra
+        shell: bash
+        working-directory: ${{ env.WORKDIR }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
+          terraform_wrapper: false
           terraform_version: 1.9.5
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Init
+        run: terraform init -upgrade
 
-      - name: Terraform fmt (check)
-        run: terraform fmt -check
+      - name: Format check
+        run: terraform fmt -check -recursive
 
-      - name: Terraform Init
-        run: terraform init -input=false
-
-      - name: Terraform Validate
+      - name: Validate
         run: terraform validate
 
-      - name: Terraform Plan
-        run: terraform plan -input=false -no-color -out=tfplan
+      - name: Plan
+        run: terraform plan -no-color -out=plan.out
 
-      - name: Upload plan artifact
+      - name: Save plan as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan
-          path: infra/tfplan
+          name: tf-plan
+          path: ${{ env.WORKDIR }}/plan.out
+
+      - name: Post plan summary to PR
+        run: |
+          {
+            echo "### Terraform Plan"
+            echo ''
+            terraform show -no-color plan.out | sed -n '1,300p'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   apply:
-    name: Terraform Apply
+    name: terraform apply (main)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: infra
+        shell: bash
+        working-directory: ${{ env.WORKDIR }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
+          terraform_wrapper: false
           terraform_version: 1.9.5
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Init
+        run: terraform init -upgrade
 
-      - name: Terraform Init
-        run: terraform init -input=false
+      - name: Format & Validate
+        run: |
+          terraform fmt -check -recursive
+          terraform validate
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve -input=false
+      - name: Apply
+        run: terraform apply -auto-approve
