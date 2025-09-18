@@ -1,12 +1,12 @@
 name: Terraform CI/CD with OIDC
 
 on:
-  push:
+  pull_request:
     branches: [ main ]
     paths:
       - 'infra/**'
       - '.github/workflows/terraform.yml'
-  pull_request:
+  push:
     branches: [ main ]
     paths:
       - 'infra/**'
@@ -14,42 +14,101 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Environment"
+        description: "Choose environment"
         required: true
-        default: dev
+        default: "dev"
         type: choice
-        options: [dev, prod]
-      action:
-        description: "Action to run"
-        required: true
-        default: apply
-        type: choice
-        options: [plan, apply, destroy]
+        options:
+          - dev
+          - prod
 
 permissions:
   id-token: write
   contents: read
   pull-requests: write
 
-env:
-  AWS_REGION: us-east-1
-  WORKDIR: infra
-  # используй твою роль из ответа OIDC
-  AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
-
-# проста и без экзотических выражений, чтобы не ловить YAML/expr ошибки
 concurrency:
   group: terraform-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+  WORKDIR: infra
+  AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
+  AWS_REGION: us-east-1
+  # Определяем целевое окружение:
+  # - если ручной запуск -> берем из inputs.environment
+  # - если push в main -> prod
+  # - иначе (PR и всё остальное) -> dev
+  TARGET_ENV: ${{ github.event_name == 'workflow_dispatch'
+                  && inputs.environment
+                  || (github.event_name == 'push' && github.ref == 'refs/heads/main'
+                      && 'prod' || 'dev') }}
+
 jobs:
-  terraform:
+  plan:
+    name: terraform plan (${{ env.TARGET_ENV }})
+    # План делаем на PR и при ручном запуске
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
         working-directory: ${{ env.WORKDIR }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+          terraform_version: 1.9.5
+
+      - name: Init
+        run: terraform init -upgrade
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - name: Validate
+        run: terraform validate
+
+      - name: Plan
+        run: terraform plan -no-color -out=plan.out \
+              -var="environment=${{ env.TARGET_ENV }}" \
+              -var="alert_email=${{ secrets.ALERT_EMAIL }}"
+
+      - name: Save plan as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tf-plan-${{ env.TARGET_ENV }}
+          path: ${{ env.WORKDIR }}/plan.out
+
+      - name: Post plan summary
+        run: |
+          {
+            echo "### Terraform Plan (${TARGET_ENV})"
+            echo ''
+            terraform show -no-color plan.out | sed -n '1,300p'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  apply:
+    name: terraform apply (${{ env.TARGET_ENV }})
+    # Автоприменение — только для push в main (prod) и вручную (что выбрал)
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.WORKDIR }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,24 +133,7 @@ jobs:
           terraform fmt -check -recursive
           terraform validate
 
-      - name: Resolve environment (dev/prod)
-        run: |
-          ENV="${{ github.event.inputs.environment }}"
-          if [ -z "$ENV" ]; then
-            # если запуск от push/PR, берём dev по умолчанию
-            ENV="dev"
-          fi
-          echo "ENV=$ENV" >> $GITHUB_ENV
-          echo "Using ENV=$ENV"
-
-      - name: Plan
-        if: ${{ github.event_name == 'pull_request' || github.event.inputs.action == 'plan' }}
-        run: terraform plan -no-color -var="environment=${{ env.ENV }}"
-
       - name: Apply
-        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.action == 'apply' }}
-        run: terraform apply -auto-approve -var="environment=${{ env.ENV }}"
-
-      - name: Destroy
-        if: ${{ github.event.inputs.action == 'destroy' }}
-        run: terraform destroy -auto-approve -var="environment=${{ env.ENV }}"
+        run: terraform apply -auto-approve \
+              -var="environment=${{ env.TARGET_ENV }}" \
+              -var="alert_email=${{ secrets.ALERT_EMAIL }}"
