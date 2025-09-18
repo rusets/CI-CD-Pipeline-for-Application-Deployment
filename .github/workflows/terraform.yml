@@ -1,97 +1,92 @@
-name: Terraform CI/CD
+name: Terraform
 
 on:
-  pull_request:
-    paths:
-      - "infra/**"
-      - ".github/workflows/terraform.yml"
   push:
-    branches: ["main"]
+    branches: [ "main" ]
     paths:
       - "infra/**"
-      - "app/public/**"
       - ".github/workflows/terraform.yml"
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - "infra/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+
+# Нужны права для OIDC
+permissions:
+  id-token: write
+  contents: read
 
 env:
-  AWS_REGION: us-east-1
-  TF_WORKING_DIR: infra
-  # Если у тебя есть var-файлы, TF_VAR_* можно добавить сюда или в Secrets
-
-permissions:
-  id-token: write     # нужно для OIDC
-  contents: read
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  TF_IN_AUTOMATION: true
 
 jobs:
   plan:
-    name: terraform plan (PR)
+    name: Terraform Plan
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        working-directory: infra
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_GHA_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.5
 
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform fmt (check)
+        run: terraform fmt -check
+
       - name: Terraform Init
         run: terraform init -input=false
-
-      - name: Terraform Format
-        run: terraform fmt -check
 
       - name: Terraform Validate
         run: terraform validate
 
       - name: Terraform Plan
-        run: terraform plan -input=false -no-color | tee plan.out
+        run: terraform plan -input=false -no-color -out=tfplan
 
-      - name: Upload plan output
+      - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tf-plan
-          path: infra/plan.out
+          name: tfplan
+          path: infra/tfplan
 
   apply:
-    name: terraform apply (main)
+    name: Terraform Apply
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        working-directory: infra
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_GHA_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.5
 
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Terraform Init
         run: terraform init -input=false
-
-      - name: Terraform Format
-        run: terraform fmt -check
-
-      - name: Terraform Validate
-        run: terraform validate
 
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
