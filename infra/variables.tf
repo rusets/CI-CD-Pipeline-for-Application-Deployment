@@ -46,6 +46,7 @@ variable "ssh_ingress_cidr" {
 }
 
 variable "alert_email" {
-  description = "Where to send CloudWatch alarms"
   type        = string
+  default     = ""       
+  description = "Email to receive CloudWatch alerts. Leave empty to disable SNS."
 }
