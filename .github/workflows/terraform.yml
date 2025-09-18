@@ -18,9 +18,7 @@ on:
         required: true
         default: "dev"
         type: choice
-        options:
-          - dev
-          - prod
+        options: [dev, prod]
 
 permissions:
   id-token: write
@@ -37,18 +35,10 @@ env:
   WORKDIR: infra
   AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
   AWS_REGION: us-east-1
-  # Определяем целевое окружение:
-  # - если ручной запуск -> берем из inputs.environment
-  # - если push в main -> prod
-  # - иначе (PR и всё остальное) -> dev
-  TARGET_ENV: ${{ github.event_name == 'workflow_dispatch'
-                  && inputs.environment
-                  || (github.event_name == 'push' && github.ref == 'refs/heads/main'
-                      && 'prod' || 'dev') }}
 
 jobs:
   plan:
-    name: terraform plan (${{ env.TARGET_ENV }})
+    name: terraform plan
     # План делаем на PR и при ручном запуске
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -72,6 +62,18 @@ jobs:
           terraform_wrapper: false
           terraform_version: 1.9.5
 
+      - name: Compute TARGET_ENV
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TARGET="${{ inputs.environment }}"
+          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            TARGET="prod"
+          else
+            TARGET="dev"
+          fi
+          echo "TARGET_ENV=$TARGET" >> "$GITHUB_ENV"
+          echo "Target environment: $TARGET"
+
       - name: Init
         run: terraform init -upgrade
 
@@ -83,13 +85,13 @@ jobs:
 
       - name: Plan
         run: terraform plan -no-color -out=plan.out \
-              -var="environment=${{ env.TARGET_ENV }}" \
+              -var="environment=${TARGET_ENV}" \
               -var="alert_email=${{ secrets.ALERT_EMAIL }}"
 
       - name: Save plan as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tf-plan-${{ env.TARGET_ENV }}
+          name: tf-plan-${{ env.GITHUB_RUN_ID }}
           path: ${{ env.WORKDIR }}/plan.out
 
       - name: Post plan summary
@@ -101,8 +103,8 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   apply:
-    name: terraform apply (${{ env.TARGET_ENV }})
-    # Автоприменение — только для push в main (prod) и вручную (что выбрал)
+    name: terraform apply
+    # Автоприменение — только для push в main (prod) и вручную (что выбрали)
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
@@ -125,6 +127,18 @@ jobs:
           terraform_wrapper: false
           terraform_version: 1.9.5
 
+      - name: Compute TARGET_ENV
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TARGET="${{ inputs.environment }}"
+          elif [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            TARGET="prod"
+          else
+            TARGET="dev"
+          fi
+          echo "TARGET_ENV=$TARGET" >> "$GITHUB_ENV"
+          echo "Target environment: $TARGET"
+
       - name: Init
         run: terraform init -upgrade
 
@@ -135,5 +149,5 @@ jobs:
 
       - name: Apply
         run: terraform apply -auto-approve \
-              -var="environment=${{ env.TARGET_ENV }}" \
+              -var="environment=${TARGET_ENV}" \
               -var="alert_email=${{ secrets.ALERT_EMAIL }}"
