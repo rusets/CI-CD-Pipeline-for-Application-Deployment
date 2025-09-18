@@ -1,129 +1,99 @@
+# .github/workflows/terraform.yml
 name: Terraform CI/CD with OIDC
 
 on:
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'infra/**'
-      - '.github/workflows/terraform.yml'
+  # Manual run with inputs
+  workflow_dispatch:
+    inputs:
+      target_env:
+        description: "Target environment (dev or prod)"
+        required: true
+        type: choice
+        options: [dev, prod]
+        default: dev
+      action:
+        description: "Terraform action"
+        required: true
+        type: choice
+        options: [apply, destroy]
+        default: apply
+
+  # (Optional) keep auto runs; remove if you want only manual runs
   push:
     branches: [ main ]
     paths:
       - 'infra/**'
       - '.github/workflows/terraform.yml'
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: "Target environment (dev or prod)"
-        required: true
-        default: dev
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/terraform.yml'
 
 permissions:
-  id-token: write
+  id-token: write      # OIDC
   contents: read
-  pull-requests: write
 
 concurrency:
-  group: terraform-${{ github.ref }}
+  group: terraform-${{ github.ref }}-${{ inputs.target_env || 'dev' }}
   cancel-in-progress: true
 
 env:
   TF_IN_AUTOMATION: true
   TF_INPUT: false
   WORKDIR: infra
-  AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
   AWS_REGION: us-east-1
-  TARGET_ENV: ${{ github.event.inputs.environment || 'dev' }}
+  # IAM role to assume via OIDC
+  AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
+  # Pass environment to Terraform (also available as TF_VAR_environment)
+  TARGET_ENV: ${{ inputs.target_env || 'dev' }}
 
 jobs:
-  plan:
-    name: terraform plan (PR)
-    if: github.event_name == 'pull_request'
+  terraform:
+    name: Terraform (${{ inputs.action || 'apply' }}) - ${{ inputs.target_env || 'dev' }}
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
         working-directory: ${{ env.WORKDIR }}
+
     steps:
+      # Checkout repo
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials via OIDC
+      # Configure AWS via OIDC
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
           terraform_version: 1.9.5
 
-      - name: Init
+      # Init/validate
+      - name: Terraform init
         run: terraform init -upgrade
 
-      - name: Format check
-        run: terraform fmt -check -recursive
-
-      - name: Validate
-        run: terraform validate
-
-      - name: Plan
-        run: |
-          terraform plan -no-color \
-            -var="environment=${TARGET_ENV}" \
-            -var="alert_email=${{ secrets.ALERT_EMAIL }}" \
-            -out=plan.out
-
-      - name: Save plan as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tf-plan
-          path: ${{ env.WORKDIR }}/plan.out
-
-      - name: Post plan summary to PR
-        run: |
-          {
-            echo "### Terraform Plan"
-            echo ''
-            terraform show -no-color plan.out | sed -n '1,300p'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  apply:
-    name: terraform apply (main)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-        working-directory: ${{ env.WORKDIR }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_wrapper: false
-          terraform_version: 1.9.5
-
-      - name: Init
-        run: terraform init -upgrade
-
-      - name: Format & Validate
+      - name: Terraform fmt & validate
         run: |
           terraform fmt -check -recursive
           terraform validate
 
-      - name: Apply
-        run: |
-          terraform apply -auto-approve \
-            -var="environment=${TARGET_ENV}" \
-            -var="alert_email=${{ secrets.ALERT_EMAIL }}"
+      # Plan always (good for logs)
+      - name: Terraform plan (${{ env.TARGET_ENV }})
+        run: terraform plan -no-color -var="environment=${TARGET_ENV}"
+
+      # Apply or Destroy based on input
+      - name: Terraform apply
+        if: ${{ (inputs.action || 'apply') == 'apply' }}
+        run: terraform apply -auto-approve -var="environment=${TARGET_ENV}"
+
+      - name: Terraform destroy
+        if: ${{ (inputs.action || 'apply') == 'destroy' }}
+        run: terraform destroy -auto-approve -var="environment=${TARGET_ENV}"
