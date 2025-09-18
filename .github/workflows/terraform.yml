@@ -1,39 +1,36 @@
-name: Terraform CI/CD with OIDC000
+name: Terraform CI/CD with OIDC
 
 on:
-  # Планируем в PR, применяем при пуше в main/prod
   pull_request:
     branches: [ main ]
     paths:
       - 'infra/**'
       - '.github/workflows/terraform.yml'
   push:
-    branches: [ main, prod ]
+    branches: [ main, prod ]   # ← prod-ветка = прод-окружение
     paths:
       - 'infra/**'
       - '.github/workflows/terraform.yml'
-  # РУЧНОЙ ЗАПУСК С ВВОДОМ ПАРАМЕТРОВ
   workflow_dispatch:
     inputs:
       environment:
-        description: "Target environment"
-        required: true
+        description: "Environment to deploy"
         type: choice
-        options: [dev, prod]
         default: dev
+        options: [dev, prod]
       project_name:
-        description: "Project name (tags/prefix)"
-        required: true
+        description: "Project name prefix"
         type: string
-        default: "ruslan-aws"
+        default: ruslan-aws
 
 permissions:
   id-token: write
   contents: read
   pull-requests: write
 
+# concurrency по ветке и окружению
 concurrency:
-  group: terraform-${{ github.ref }}
+  group: terraform-${{ github.ref_name }}-${{ inputs.environment || (github.ref_name == 'prod' && 'prod' || 'dev') }}
   cancel-in-progress: true
 
 env:
@@ -43,12 +40,24 @@ env:
   AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
   AWS_REGION: us-east-1
 
+  # Определяем окружение:
+  # - при ручном запуске: берём из inputs.environment
+  # - при пуше: ветка 'prod' => prod, иначе dev
+  ENVIRONMENT: ${{ inputs.environment || (github.ref_name == 'prod' && 'prod' || 'dev') }}
+  PROJECT_NAME: ${{ inputs.project_name || 'ruslan-aws' }}
+
 jobs:
   plan:
     name: terraform plan (PR)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    defaults: { run: { shell: bash, working-directory: ${{ env.WORKDIR }} } }
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.WORKDIR }}
+    env:
+      TF_VAR_environment: ${{ env.ENVIRONMENT }}
+      TF_VAR_project_name: ${{ env.PROJECT_NAME }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -56,29 +65,36 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - uses: hashicorp/setup-terraform@v3
-        with: { terraform_wrapper: false, terraform_version: 1.9.5 }
+        with:
+          terraform_wrapper: false
+          terraform_version: 1.9.5
       - run: terraform init -upgrade
       - run: terraform fmt -check -recursive
       - run: terraform validate
       - run: terraform plan -no-color -out=plan.out
       - uses: actions/upload-artifact@v4
-        with: { name: tf-plan, path: ${{ env.WORKDIR }}/plan.out }
-      - name: Post plan summary to PR
+        with:
+          name: tf-plan
+          path: ${{ env.WORKDIR }}/plan.out
+      - name: PR summary
         run: |
           {
-            echo "### Terraform Plan"
-            echo ''
+            echo "### Terraform Plan (${ENVIRONMENT})"
+            echo
             terraform show -no-color plan.out | sed -n '1,300p'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  apply_main:
-    name: terraform apply (main → dev, prod → prod)
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/prod')
+  apply:
+    name: terraform apply (main/prod)
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/prod') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.WORKDIR }}
     env:
-      TF_VAR_environment: ${{ github.ref == 'refs/heads/prod' && 'prod' || 'dev' }}
-      TF_VAR_project_name: ruslan-aws
-    defaults: { run: { shell: bash, working-directory: ${{ env.WORKDIR }} } }
+      TF_VAR_environment: ${{ env.ENVIRONMENT }}
+      TF_VAR_project_name: ${{ env.PROJECT_NAME }}
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -86,31 +102,12 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - uses: hashicorp/setup-terraform@v3
-        with: { terraform_wrapper: false, terraform_version: 1.9.5 }
+        with:
+          terraform_wrapper: false
+          terraform_version: 1.9.5
       - run: terraform init -upgrade
       - run: |
           terraform fmt -check -recursive
           terraform validate
-      - run: terraform apply -auto-approve
-
-  apply_manual:
-    name: terraform apply (manual)
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    # Используем введённые в форме значения как TF_VAR_*
-    env:
-      TF_VAR_environment: ${{ inputs.environment }}
-      TF_VAR_project_name: ${{ inputs.project_name }}
-    defaults: { run: { shell: bash, working-directory: ${{ env.WORKDIR }} } }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - uses: hashicorp/setup-terraform@v3
-        with: { terraform_wrapper: false, terraform_version: 1.9.5 }
-      - name: Init
-        run: terraform init -upgrade
-      - name: Apply (manual params)
+      - name: Apply ${{ env.ENVIRONMENT }}
         run: terraform apply -auto-approve
