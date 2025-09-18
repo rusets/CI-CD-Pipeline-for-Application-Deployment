@@ -1,4 +1,4 @@
-name: Terraform CI/CD with OIDC
+name: Terraform CI/CD with OIDC000
 
 on:
   # Планируем в PR, применяем при пуше в main/prod
