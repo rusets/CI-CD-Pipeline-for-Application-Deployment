@@ -1,57 +1,60 @@
 name: Terraform CI/CD with OIDC
 
 on:
-  # План на PR, автоприменение на push в main
-  pull_request:
-    branches: [ main ]
-    paths:
-      - 'infra/**'
-      - '.github/workflows/terraform.yml'
   push:
     branches: [ main ]
     paths:
       - 'infra/**'
       - '.github/workflows/terraform.yml'
-  # Ручной запуск из Actions → Run workflow
-on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/terraform.yml'
   workflow_dispatch:
     inputs:
-      action:
-        type: choice
-        options: [apply, destroy]
-        default: apply
+      environment:
+        description: "Environment"
         required: true
+        default: dev
+        type: choice
+        options: [dev, prod]
+      action:
+        description: "Action to run"
+        required: true
+        default: apply
+        type: choice
+        options: [plan, apply, destroy]
 
 permissions:
-  id-token: write        # OIDC
-  contents: read         # checkout
-  pull-requests: write   # постим план в PR (опционально)
+  id-token: write
+  contents: read
+  pull-requests: write
 
+env:
+  AWS_REGION: us-east-1
+  WORKDIR: infra
+  # используй твою роль из ответа OIDC
+  AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
+
+# проста и без экзотических выражений, чтобы не ловить YAML/expr ошибки
 concurrency:
   group: terraform-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  TF_IN_AUTOMATION: true
-  TF_INPUT: false
-  WORKDIR: infra
-  AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
-  AWS_REGION: us-east-1
-
 jobs:
-  plan_pr:
-    name: terraform plan (PR)
-    if: github.event_name == 'pull_request'
+  terraform:
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
         working-directory: ${{ env.WORKDIR }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
@@ -66,100 +69,29 @@ jobs:
       - name: Init
         run: terraform init -upgrade
 
-      - name: Format check
-        run: terraform fmt -check -recursive
+      - name: Format & Validate
+        run: |
+          terraform fmt -check -recursive
+          terraform validate
 
-      - name: Validate
-        run: terraform validate
+      - name: Resolve environment (dev/prod)
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          if [ -z "$ENV" ]; then
+            # если запуск от push/PR, берём dev по умолчанию
+            ENV="dev"
+          fi
+          echo "ENV=$ENV" >> $GITHUB_ENV
+          echo "Using ENV=$ENV"
 
       - name: Plan
-        run: terraform plan -no-color -out=plan.out
-
-      - name: Save plan artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tf-plan
-          path: ${{ env.WORKDIR }}/plan.out
-
-      - name: Post plan summary to PR
-        run: |
-          {
-            echo "### Terraform Plan"
-            echo
-            terraform show -no-color plan.out | sed -n '1,300p'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-  apply_main:
-    name: terraform apply (main)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-        working-directory: ${{ env.WORKDIR }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_wrapper: false
-          terraform_version: 1.9.5
-
-      - name: Init
-        run: terraform init -upgrade
-
-      - name: Format & Validate
-        run: |
-          terraform fmt -check -recursive
-          terraform validate
+        if: ${{ github.event_name == 'pull_request' || github.event.inputs.action == 'plan' }}
+        run: terraform plan -no-color -var="environment=${{ env.ENV }}"
 
       - name: Apply
-        run: terraform apply -auto-approve
+        if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event.inputs.action == 'apply' }}
+        run: terraform apply -auto-approve -var="environment=${{ env.ENV }}"
 
-  manual:
-    name: terraform ${{ inputs.action }} (manual)
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-        working-directory: ${{ env.WORKDIR }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_wrapper: false
-          terraform_version: 1.9.5
-
-      - name: Init
-        run: terraform init -upgrade
-
-      - name: Format & Validate
-        run: |
-          terraform fmt -check -recursive
-          terraform validate
-
-      - name: Run chosen action
-        run: |
-          case "${{ inputs.action }}" in
-            apply)   terraform apply -auto-approve ;;
-            destroy) terraform destroy -auto-approve ;;
-            *) echo "Unsupported action"; exit 1 ;;
-          esac
+      - name: Destroy
+        if: ${{ github.event.inputs.action == 'destroy' }}
+        run: terraform destroy -auto-approve -var="environment=${{ env.ENV }}"
