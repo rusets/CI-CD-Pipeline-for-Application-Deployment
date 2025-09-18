@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Ruslan AWS 🚀 — Contact</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+
+<body>
+  <header class="site-header">
+    <a class="brand" href="index.html">Ruslan <span>AWS 🚀</span></a>
+    <nav class="nav" id="nav">
+      <a href="index.html">Home</a>
+      <a href="projects.html">Projects</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="contact.html" class="active">Contact</a>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">☾</button>
+    </nav>
+    <button class="burger" id="burger" aria-label="Open menu"><span></span></button>
+  </header>
+
+  <main class="page">
+    <h1 class="page-title">Contact</h1>
+
+    <!-- Replace API_URL below with terraform output contact_api_url -->
+    <form class="card form" id="contactForm" action="https://YOUR_API_ID.execute-api.us-east-1.amazonaws.com/send"
+      method="POST">
+
+      <label>Name
+        <input required name="name" placeholder="Your name" />
+      </label>
+
+      <label>Email
+        <input required type="email" name="email" placeholder="you@example.com" />
+      </label>
+
+      <label>Message
+        <textarea required name="message" rows="4" placeholder="Tell me more…"></textarea>
+      </label>
+
+      <button class="btn primary" type="submit">Send</button>
+    </form>
+  </main>
+
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Ruslan AWS.</p>
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+</body>
+
+</html>

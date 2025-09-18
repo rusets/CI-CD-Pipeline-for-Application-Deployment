@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="utf-8">
+  <title>Neon Aurora — Контакты</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+
+<body>
+  <header class="site-header">
+    <a class="brand" href="index.html">Neon <span>Aurora</span></a>
+    <nav class="nav" id="nav">
+      <a href="index.html">Главная</a>
+      <a href="projects.html">Проекты</a>
+      <a href="gallery.html">Галерея</a>
+      <a href="contact.html" class="active">Контакты</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">☾</button>
+    </nav>
+    <button class="burger" id="burger" aria-label="Open menu"><span></span></button>
+  </header>
+
+  <main class="page">
+    <h1 class="page-title">Свяжитесь с нами</h1>
+    <form class="card form" onsubmit="event.preventDefault(); alert('Спасибо! Мы свяжемся с вами.');">
+      <label>Имя <input required placeholder="Как к вам обращаться"></label>
+      <label>Email <input required type="email" placeholder="you@example.com"></label>
+      <label>Сообщение <textarea rows="4" placeholder="Коротко опишите задачу"></textarea></label>
+      <button class="btn primary" type="submit">Отправить</button>
+    </form>
+  </main>
+
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Neon Aurora.</p>
+  </footer>
+  <script src="assets/js/app.js"></script>
+</body>
+
+</html>

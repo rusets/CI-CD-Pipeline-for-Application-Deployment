@@ -1,0 +1,10 @@
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.*
+*.tfvars
+*.zip
+.tmp/
+.site.zip
+__pycache__/
+node_modules/

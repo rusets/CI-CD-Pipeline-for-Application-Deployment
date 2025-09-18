@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Ruslan AWS 🚀 — Home</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+
+<body>
+  <header class="site-header">
+    <a class="brand" href="index.html">Ruslan <span>AWS 🚀</span></a>
+    <nav class="nav" id="nav">
+      <a href="index.html" class="active">Home</a>
+      <a href="projects.html">Projects</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="contact.html">Contact</a>
+      <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">☾</button>
+    </nav>
+    <button class="burger" id="burger" aria-label="Open menu"><span></span></button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="glow"></div>
+      <h1>Welcome to <strong>Ruslan AWS</strong></h1>
+      <p>Modern, colorful, interactive multi-page site powered by a simple static stack.</p>
+
+      <div class="cta">
+        <a class="btn primary" href="projects.html">Explore Projects</a>
+        <a class="btn ghost" href="contact.html">Get in Touch</a>
+      </div>
+    </section>
+
+    <section class="cards">
+      <article class="card">
+        <h3>Fast</h3>
+        <p>Static HTML/CSS/JS deployed via EC2 user data for quick, reliable hosting.</p>
+      </article>
+      <article class="card">
+        <h3>Colorful</h3>
+        <p>Neon gradients and soft glass panels for a bright, modern aesthetic.</p>
+      </article>
+      <article class="card">
+        <h3>Accessible</h3>
+        <p>Light/Dark theme toggle is saved locally and applied on every visit.</p>
+      </article>
+    </section>
+
+    <section class="strip">
+      <p><strong>Tip:</strong> Edit your HTML/CSS/JS under <code>app/public/</code>, re-apply Terraform, and your site
+        updates instantly.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Ruslan AWS. Built with love and a tiny bit of neon.</p>
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+</body>
+
+</html>

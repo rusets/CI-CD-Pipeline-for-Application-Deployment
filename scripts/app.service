@@ -1,0 +1,15 @@
+[Unit]
+Description=CI/CD Demo Node App
+After=network.target
+
+[Service]
+User=ec2-user
+WorkingDirectory=/opt/app/current
+ExecStart=/usr/bin/node server.js
+Restart=always
+Environment=PORT=8080
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
