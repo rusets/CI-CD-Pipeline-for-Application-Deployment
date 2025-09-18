@@ -8,15 +8,23 @@ variable "region" {
 }
 
 variable "project_name" {
-  description = "Project name tag and on-page label"
   type        = string
-  default     = "neon-aurora"
+  description = "Проект (общий префикс ресурсов)"
+  default     = "ruslan-aws"
+  validation {
+    condition     = length(var.project_name) > 0
+    error_message = "project_name не должен быть пустым."
+  }
 }
 
 variable "environment" {
-  description = "Environment label"
   type        = string
+  description = "Окружение: dev или prod"
   default     = "dev"
+  validation {
+    condition     = contains(["dev", "prod"], var.environment)
+    error_message = "environment должен быть dev или prod."
+  }
 }
 
 variable "instance_type" {
