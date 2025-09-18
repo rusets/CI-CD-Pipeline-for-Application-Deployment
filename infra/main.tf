@@ -2,8 +2,13 @@
 # Locals
 # -----------------------------------------------------------------------------
 locals {
-  # Absolute path to your local website folder
-  site_dir = abspath("${path.module}/app/public")
+  site_dir    = "${path.module}/../app/public"
+  name_prefix = "${var.project_name}-${var.environment}"
+  common_tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "terraform"
+  }
 }
 
 # -----------------------------------------------------------------------------
@@ -100,6 +105,7 @@ resource "aws_instance" "app" {
   instance_type               = var.instance_type
   subnet_id                   = data.aws_subnets.default.ids[0]
   vpc_security_group_ids      = [aws_security_group.app_sg.id]
+  iam_instance_profile        = aws_iam_instance_profile.cw_agent_profile.name
   associate_public_ip_address = true
   key_name                    = var.key_name != "" ? var.key_name : null
 
