@@ -46,7 +46,7 @@ data "aws_ami" "al2023" {
 }
 
 # -----------------------------------------------------------------------------
-# Zip local site and hand over to user_data as Base64
+# Package local site into ZIP and pass to user_data as Base64
 # -----------------------------------------------------------------------------
 data "archive_file" "site_zip" {
   type        = "zip"
@@ -55,14 +55,14 @@ data "archive_file" "site_zip" {
 }
 
 # -----------------------------------------------------------------------------
-# Security Group (HTTP always, SSH optional)
+# Security Group (HTTP always; SSH optional)
 # -----------------------------------------------------------------------------
 resource "aws_security_group" "app_sg" {
   name        = "${var.project_name}-${var.environment}-sg"
   description = "Allow HTTP and optional SSH"
   vpc_id      = data.aws_vpc.default.id
 
-  # HTTP
+  # HTTP open to the world (IPv4 + IPv6)
   ingress {
     description      = "HTTP"
     from_port        = 80
@@ -72,7 +72,7 @@ resource "aws_security_group" "app_sg" {
     ipv6_cidr_blocks = ["::/0"]
   }
 
-  # SSH (only if cidr is provided)
+  # SSH only if a CIDR is provided (kept closed by default)
   dynamic "ingress" {
     for_each = var.ssh_ingress_cidr == "" ? [] : [var.ssh_ingress_cidr]
     content {
@@ -84,6 +84,7 @@ resource "aws_security_group" "app_sg" {
     }
   }
 
+  # Egress: allow all outbound traffic
   egress {
     description = "All egress"
     from_port   = 0
@@ -109,7 +110,9 @@ resource "aws_instance" "app" {
   associate_public_ip_address = true
   key_name                    = var.key_name != "" ? var.key_name : null
 
-  # Cloud-init script (Bash). Receives the zipped site as Base64.
+  # Cloud-init (Bash). Receives the site ZIP as Base64 (decoded on instance).
+  # NOTE: Ensure your user_data.sh escapes any Bash ${...} with $${...}
+  # to avoid Terraform interpolation conflicts.
   user_data = templatefile("${path.module}/user_data.sh", {
     PROJECT_NAME = var.project_name
     ENVIRONMENT  = var.environment

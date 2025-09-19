@@ -1,12 +1,15 @@
 #!/bin/bash
 # -----------------------------------------------------------------------------
-# qUser Data (cloud-init)
+# User Data (cloud-init)
 # - Installs Apache & unzip on Amazon Linux 2023
-# - Unpacks website files provided by Terraform (Base64 ZIP) to /var/www/html
+# - Unpacks website files (Base64 ZIP from Terraform) into /var/www/html
 # - Shows a small fallback page if index.html isn't present
 # -----------------------------------------------------------------------------
+
+# Fail fast on errors, unset vars, and failed pipes; echo commands as they run
 set -euxo pipefail
 
+# These are injected by Terraform templatefile(..)
 PROJECT_NAME="${PROJECT_NAME}"
 ENVIRONMENT="${ENVIRONMENT}"
 ARCHIVE_B64="${ARCHIVE_B64}"
@@ -58,5 +61,5 @@ if [ ! -f /var/www/html/index.html ]; then
 HTML
 fi
 
-# 6) Start Apache
+# 6) Enable and start Apache
 systemctl enable --now httpd
