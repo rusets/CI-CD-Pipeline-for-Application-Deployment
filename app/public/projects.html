@@ -1,56 +1,51 @@
-<!doctype html>
-<html lang="ru">
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
-  <meta charset="utf-8">
-  <title>Neon Aurora — Проекты</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="assets/css/styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ruslan AWS 🚀 — Projects</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="app.js"></script>
 </head>
 
 <body>
-  <header class="site-header">
-    <a class="brand" href="index.html">Neon <span>Aurora</span></a>
-    <nav class="nav" id="nav">
-      <a href="index.html">Главная</a>
-      <a href="projects.html" class="active">Проекты</a>
-      <a href="gallery.html">Галерея</a>
-      <a href="contact.html">Контакты</a>
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">☾</button>
+  <header>
+    <nav class="navbar">
+      <div class="logo">Ruslan AWS 🚀</div>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="projects.html" class="active">Projects</a></li>
+        <li><a href="gallery.html">Gallery</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+      <div class="theme-toggle" id="themeToggle">🌙</div>
     </nav>
-    <button class="burger" id="burger" aria-label="Open menu"><span></span></button>
   </header>
 
-  <main class="page">
-    <h1 class="page-title">Проекты</h1>
-    <div class="grid">
-      <article class="tile">
-        <h3>Pulse</h3>
-        <p>Дашборд с живыми графиками и плавной анимацией.</p>
-        <a class="btn tiny" href="#">Подробнее</a>
-      </article>
-      <article class="tile">
-        <h3>Flux</h3>
-        <p>Лендинг с 3D-параллаксом и микровзаимодействиями.</p>
-        <a class="btn tiny" href="#">Подробнее</a>
-      </article>
-      <article class="tile">
-        <h3>Nova</h3>
-        <p>Дизайн-система в неоновой палитре для веб-приложений.</p>
-        <a class="btn tiny" href="#">Подробнее</a>
-      </article>
-      <article class="tile">
-        <h3>Spark</h3>
-        <p>Минималистичный блог с фокусом на типографике.</p>
-        <a class="btn tiny" href="#">Подробнее</a>
-      </article>
-    </div>
+  <main>
+    <section class="section">
+      <h1>Projects</h1>
+      <div class="cards">
+        <div class="card">
+          <h2>CI/CD Pipeline</h2>
+          <p>Automated infrastructure deployment with Terraform and GitHub Actions (OIDC).</p>
+        </div>
+        <div class="card">
+          <h2>Multi-tier App</h2>
+          <p>A production-like demo: EC2, ALB, RDS, monitoring via CloudWatch.</p>
+        </div>
+        <div class="card">
+          <h2>Static Website</h2>
+          <p>Deployed on S3 + CloudFront with HTTPS and Route53 integration.</p>
+        </div>
+      </div>
+    </section>
   </main>
 
-  <footer class="site-footer">
-    <p>© <span id="year"></span> Neon Aurora.</p>
+  <footer>
+    <p>© <span id="year"></span> Ruslan AWS 🚀</p>
   </footer>
-  <script src="assets/js/app.js"></script>
 </body>
 
 </html>

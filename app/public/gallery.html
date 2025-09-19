@@ -1,45 +1,42 @@
-<!doctype html>
-<html lang="ru">
+<!DOCTYPE html>
+<html lang="en">
 
 <head>
-  <meta charset="utf-8">
-  <title>Neon Aurora — Галерея</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <link rel="stylesheet" href="assets/css/styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ruslan AWS 🚀 — Gallery</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script defer src="app.js"></script>
 </head>
 
 <body>
-  <header class="site-header">
-    <a class="brand" href="index.html">Neon <span>Aurora</span></a>
-    <nav class="nav" id="nav">
-      <a href="index.html">Главная</a>
-      <a href="projects.html">Проекты</a>
-      <a href="gallery.html" class="active">Галерея</a>
-      <a href="contact.html">Контакты</a>
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">☾</button>
+  <header>
+    <nav class="navbar">
+      <div class="logo">Ruslan AWS 🚀</div>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="projects.html">Projects</a></li>
+        <li><a href="gallery.html" class="active">Gallery</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+      <div class="theme-toggle" id="themeToggle">🌙</div>
     </nav>
-    <button class="burger" id="burger" aria-label="Open menu"><span></span></button>
   </header>
 
-  <main class="page">
-    <h1 class="page-title">Галерея</h1>
-    <div class="masonry">
-      <div class="shot"></div>
-      <div class="shot tall"></div>
-      <div class="shot wide"></div>
-      <div class="shot"></div>
-      <div class="shot wide"></div>
-      <div class="shot tall"></div>
-      <div class="shot"></div>
-      <div class="shot"></div>
-      <div class="shot wide"></div>
-    </div>
+  <main>
+    <section class="section">
+      <h1>Gallery</h1>
+      <div class="gallery">
+        <img src="assets/img1.jpg" alt="AWS Project Screenshot 1" />
+        <img src="assets/img2.jpg" alt="AWS Project Screenshot 2" />
+        <img src="assets/img3.jpg" alt="AWS Project Screenshot 3" />
+      </div>
+    </section>
   </main>
 
-  <footer class="site-footer">
-    <p>© <span id="year"></span> Neon Aurora.</p>
+  <footer>
+    <p>© <span id="year"></span> Ruslan AWS 🚀</p>
   </footer>
-  <script src="assets/js/app.js"></script>
 </body>
 
 </html>
