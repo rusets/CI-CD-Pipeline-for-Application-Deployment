@@ -2,7 +2,8 @@
 # Locals
 # -----------------------------------------------------------------------------
 locals {
-  site_dir    = "${path.module}/../app/public"
+  # OLD: site_dir = "${path.module}/../app/public"
+  site_dir    = "${path.module}/app"
   name_prefix = "${var.project_name}-${var.environment}"
   common_tags = {
     Project     = var.project_name
