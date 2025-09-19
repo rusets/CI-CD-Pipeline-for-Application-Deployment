@@ -1,49 +1,40 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ruslan AWS 🚀 — Contact</title>
-  <link rel="stylesheet" href="styles.css" />
-  <script defer src="app.js"></script>
+  <meta charset="utf-8">
+  <title>Neon Aurora — Contacts</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 
 <body>
-  <header>
-    <nav class="navbar">
-      <div class="logo">Ruslan AWS 🚀</div>
-      <ul class="nav-links">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="projects.html">Projects</a></li>
-        <li><a href="gallery.html">Gallery</a></li>
-        <li><a href="contact.html" class="active">Contact</a></li>
-      </ul>
-      <div class="theme-toggle" id="themeToggle">🌙</div>
+  <header class="site-header">
+    <a class="brand" href="index.html">Neon <span>Aurora</span></a>
+    <nav class="nav" id="nav">
+      <a href="index.html">Home</a>
+      <a href="projects.html">Projects</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="contact.html" class="active">Contacts</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">☾</button>
     </nav>
+    <button class="burger" id="burger" aria-label="Open menu"><span></span></button>
   </header>
 
-  <main>
-    <section class="section">
-      <h1>Contact</h1>
-      <form id="contactForm">
-        <label for="name">Name:</label>
-        <input type="text" id="name" name="name" required />
-
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required />
-
-        <label for="message">Message:</label>
-        <textarea id="message" name="message" required></textarea>
-
-        <button type="submit" class="btn">Send</button>
-      </form>
-    </section>
+  <main class="page">
+    <h1 class="page-title">Get in Touch</h1>
+    <form class="card form" onsubmit="event.preventDefault(); alert('Thank you! We will contact you soon.');">
+      <label>Name <input required placeholder="Your name"></label>
+      <label>Email <input required type="email" placeholder="you@example.com"></label>
+      <label>Message <textarea rows="4" placeholder="Briefly describe your task"></textarea></label>
+      <button class="btn primary" type="submit">Send</button>
+    </form>
   </main>
 
-  <footer>
-    <p>© <span id="year"></span> Ruslan AWS 🚀</p>
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Neon Aurora.</p>
   </footer>
+  <script src="assets/js/app.js"></script>
 </body>
 
 </html>

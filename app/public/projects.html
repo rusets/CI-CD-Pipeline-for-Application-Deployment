@@ -1,51 +1,56 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ruslan AWS 🚀 — Projects</title>
-  <link rel="stylesheet" href="styles.css" />
-  <script defer src="app.js"></script>
+  <meta charset="utf-8">
+  <title>Neon Aurora — Projects</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 
 <body>
-  <header>
-    <nav class="navbar">
-      <div class="logo">Ruslan AWS 🚀</div>
-      <ul class="nav-links">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="projects.html" class="active">Projects</a></li>
-        <li><a href="gallery.html">Gallery</a></li>
-        <li><a href="contact.html">Contact</a></li>
-      </ul>
-      <div class="theme-toggle" id="themeToggle">🌙</div>
+  <header class="site-header">
+    <a class="brand" href="index.html">Neon <span>Aurora</span></a>
+    <nav class="nav" id="nav">
+      <a href="index.html">Home</a>
+      <a href="projects.html" class="active">Projects</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="contact.html">Contacts</a>
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">☾</button>
     </nav>
+    <button class="burger" id="burger" aria-label="Open menu"><span></span></button>
   </header>
 
-  <main>
-    <section class="section">
-      <h1>Projects</h1>
-      <div class="cards">
-        <div class="card">
-          <h2>CI/CD Pipeline</h2>
-          <p>Automated infrastructure deployment with Terraform and GitHub Actions (OIDC).</p>
-        </div>
-        <div class="card">
-          <h2>Multi-tier App</h2>
-          <p>A production-like demo: EC2, ALB, RDS, monitoring via CloudWatch.</p>
-        </div>
-        <div class="card">
-          <h2>Static Website</h2>
-          <p>Deployed on S3 + CloudFront with HTTPS and Route53 integration.</p>
-        </div>
-      </div>
-    </section>
+  <main class="page">
+    <h1 class="page-title">Projects</h1>
+    <div class="grid">
+      <article class="tile">
+        <h3>Pulse</h3>
+        <p>A dashboard with live charts and smooth animation.</p>
+        <a class="btn tiny" href="#">More details</a>
+      </article>
+      <article class="tile">
+        <h3>Flux</h3>
+        <p>A landing page with 3D parallax and micro-interactions.</p>
+        <a class="btn tiny" href="#">More details</a>
+      </article>
+      <article class="tile">
+        <h3>Nova</h3>
+        <p>A design system in a neon palette for web applications.</p>
+        <a class="btn tiny" href="#">More details</a>
+      </article>
+      <article class="tile">
+        <h3>Spark</h3>
+        <p>A minimalist blog focused on typography.</p>
+        <a class="btn tiny" href="#">More details</a>
+      </article>
+    </div>
   </main>
 
-  <footer>
-    <p>© <span id="year"></span> Ruslan AWS 🚀</p>
+  <footer class="site-footer">
+    <p>© <span id="year"></span> Neon Aurora.</p>
   </footer>
+  <script src="assets/js/app.js"></script>
 </body>
 
 </html>
