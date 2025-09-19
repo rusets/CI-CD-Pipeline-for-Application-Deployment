@@ -1,9 +1,9 @@
 # -----------------------------------------------------------------------------
 # Locals
 # -----------------------------------------------------------------------------
+# main.tf (или где объявлены locals)
 locals {
-  # OLD: site_dir = "${path.module}/../app/public"
-  site_dir    = "${path.module}/app"
+  site_dir    = "${path.module}/app/public" # ✅ правильный путь
   name_prefix = "${var.project_name}-${var.environment}"
   common_tags = {
     Project     = var.project_name
