@@ -75,4 +75,4 @@ cloudwatch/amazon-cloudwatch-agent.json
 # Bootstrap / temp JSON
 ############################################
 tf-allow.json
-tf-config.json
+tf-config.json.terraform.lock.hcl
