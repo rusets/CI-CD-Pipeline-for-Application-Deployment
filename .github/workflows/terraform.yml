@@ -1,8 +1,6 @@
-# .github/workflows/terraform.yml
 name: Terraform CI/CD with OIDC
 
 on:
-  # Manual run with inputs
   workflow_dispatch:
     inputs:
       target_env:
@@ -18,20 +16,19 @@ on:
         options: [apply, destroy]
         default: apply
 
-  # (Optional) keep auto runs; remove if you want only manual runs
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'infra/**'
-      - '.github/workflows/terraform.yml'
+      - "infra/**"
+      - ".github/workflows/terraform.yml"
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'infra/**'
-      - '.github/workflows/terraform.yml'
+      - "infra/**"
+      - ".github/workflows/terraform.yml"
 
 permissions:
-  id-token: write      # OIDC
+  id-token: write
   contents: read
 
 concurrency:
@@ -43,10 +40,11 @@ env:
   TF_INPUT: false
   WORKDIR: infra
   AWS_REGION: us-east-1
-  # IAM role to assume via OIDC
   AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
-  # Pass environment to Terraform (also available as TF_VAR_environment)
   TARGET_ENV: ${{ inputs.target_env || 'dev' }}
+  PROJECT_NAME: ruslan-aws
+  ENVIRONMENT: prod
+  TF_VAR_reaper_function_name: ruslan-aws-dev-reaper
 
 jobs:
   terraform:
@@ -58,25 +56,21 @@ jobs:
         working-directory: ${{ env.WORKDIR }}
 
     steps:
-      # Checkout repo
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Configure AWS via OIDC
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
           terraform_version: 1.9.5
 
-      # Init/validate
       - name: Terraform init
         run: terraform init -upgrade
 
@@ -85,11 +79,9 @@ jobs:
           terraform fmt -check -recursive
           terraform validate
 
-      # Plan always (good for logs)
       - name: Terraform plan (${{ env.TARGET_ENV }})
         run: terraform plan -no-color -var="environment=${TARGET_ENV}"
 
-      # Apply or Destroy based on input
       - name: Terraform apply
         if: ${{ (inputs.action || 'apply') == 'apply' }}
         run: terraform apply -auto-approve -var="environment=${TARGET_ENV}"
