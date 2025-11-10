@@ -1,0 +1,78 @@
+name: Terraform (infra-wake) — CI/CD with OIDC
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform action"
+        required: true
+        type: choice
+        options: [apply, destroy]
+        default: apply
+
+  push:
+    branches: [ main ]
+    paths:
+      - 'infra/infra-wake/**'
+      - '.github/workflows/infra-wake.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: terraform-infra-wake-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+  WORKDIR: infra/infra-wake
+  AWS_REGION: us-east-1
+  AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
+  PROJECT_NAME: ruslan-aws
+  ENVIRONMENT: dev
+
+jobs:
+  terraform:
+    name: Terraform (${{ inputs.action || 'apply' }}) — infra-wake
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ env.WORKDIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+          terraform_version: 1.9.5
+
+      - name: Terraform init
+        run: terraform init -upgrade
+
+      - name: Terraform fmt & validate
+        run: |
+          terraform fmt -check -recursive
+          terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -no-color -var="environment=${ENVIRONMENT}"
+
+      - name: Terraform apply
+        if: ${{ (inputs.action || 'apply') == 'apply' }}
+        run: terraform apply -auto-approve -var="environment=${ENVIRONMENT}"
+
+      - name: Terraform destroy
+        if: ${{ (inputs.action || 'apply') == 'destroy' }}
+        run: terraform destroy -auto-approve -var="environment=${ENVIRONMENT}"

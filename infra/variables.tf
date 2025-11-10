@@ -58,3 +58,4 @@ variable "reaper_function_name" {
   description = "Lambda function name for the reaper (e.g., ruslan-aws-dev-reaper)"
   type        = string
 }
+

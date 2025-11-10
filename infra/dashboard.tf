@@ -4,13 +4,91 @@
 data "aws_region" "current" {}
 
 ############################################
-# Locals — Logs Insights query (explicit SOURCE)
+# Locals — conditional widgets for reaper
 ############################################
 locals {
+  reaper_fn = trimspace(var.reaper_function_name)
+
+  # Logs Insights with explicit SOURCE to the Lambda's log group
   reaper_logs_query = format(
     "SOURCE '/aws/lambda/%s' | fields @timestamp, @message | sort @timestamp desc | limit 50",
-    var.reaper_function_name
+    local.reaper_fn
   )
+
+  # Widget: Lambda reaper — Invocations & Errors (1m) — only if reaper_fn set
+  w_reaper_metrics = local.reaper_fn != "" ? [
+    {
+      type   = "metric"
+      x      = 0
+      y      = 0
+      width  = 24
+      height = 6
+      properties = {
+        region  = data.aws_region.current.id
+        title   = "Lambda reaper — Invocations & Errors (1m)"
+        view    = "timeSeries"
+        stat    = "Sum"
+        period  = 60
+        stacked = false
+        metrics = [
+          ["AWS/Lambda", "Invocations", "FunctionName", local.reaper_fn, { stat = "Sum", period = 60 }],
+          [".", "Errors", ".", ".", { stat = "Sum", period = 60, yAxis = "right" }]
+        ]
+        yAxis = {
+          left  = { label = "Invocations" }
+          right = { label = "Errors" }
+        }
+      }
+    }
+  ] : []
+
+  # Widget: EC2 CPU & StatusChecks (1m) — always present
+  w_ec2_minutely = [
+    {
+      type   = "metric"
+      x      = 0
+      y      = 6
+      width  = 24
+      height = 6
+      properties = {
+        region  = data.aws_region.current.id
+        title   = "EC2 — CPU & StatusChecks (1m)"
+        view    = "timeSeries"
+        stat    = "Average"
+        period  = 60
+        stacked = false
+        metrics = [
+          ["AWS/EC2", "CPUUtilization", "InstanceId", aws_instance.app.id, { stat = "Average", period = 60 }],
+          [".", "StatusCheckFailed_Instance", "InstanceId", aws_instance.app.id, { stat = "Maximum", period = 60, yAxis = "right" }],
+          [".", "StatusCheckFailed_System", "InstanceId", aws_instance.app.id, { stat = "Maximum", period = 60, yAxis = "right" }]
+        ]
+        yAxis = {
+          left  = { label = "CPU %" }
+          right = { label = "Status failed (0/1)" }
+        }
+      }
+    }
+  ]
+
+  # Widget: Logs timeline (only if reaper_fn set)
+  w_reaper_logs = local.reaper_fn != "" ? [
+    {
+      type   = "log"
+      x      = 0
+      y      = 12
+      width  = 24
+      height = 8
+      properties = {
+        region = data.aws_region.current.id
+        title  = "Reaper timeline — recent decisions"
+        query  = local.reaper_logs_query
+        view   = "table"
+      }
+    }
+  ] : []
+
+  # Final list for Autowake dashboard
+  autowake_widgets = concat(local.w_reaper_metrics, local.w_ec2_minutely, local.w_reaper_logs)
 }
 
 ############################################
@@ -22,11 +100,7 @@ resource "aws_cloudwatch_dashboard" "main" {
   dashboard_body = jsonencode({
     widgets = [
       {
-        "type" : "metric",
-        "x" : 0,
-        "y" : 0,
-        "width" : 12,
-        "height" : 6,
+        "type" : "metric", "x" : 0, "y" : 0, "width" : 12, "height" : 6,
         "properties" : {
           "region" : data.aws_region.current.id,
           "title" : "EC2 CPU Utilization (%)",
@@ -40,11 +114,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
       {
-        "type" : "metric",
-        "x" : 12,
-        "y" : 0,
-        "width" : 12,
-        "height" : 6,
+        "type" : "metric", "x" : 12, "y" : 0, "width" : 12, "height" : 6,
         "properties" : {
           "region" : data.aws_region.current.id,
           "title" : "EC2 Status Check Failed",
@@ -69,11 +139,7 @@ resource "aws_cloudwatch_dashboard" "ci_cd_dashboard" {
   dashboard_body = jsonencode({
     widgets = [
       {
-        "type" : "metric",
-        "x" : 0,
-        "y" : 0,
-        "width" : 12,
-        "height" : 6,
+        "type" : "metric", "x" : 0, "y" : 0, "width" : 12, "height" : 6,
         "properties" : {
           "metrics" : [
             ["AWS/EC2", "CPUUtilization", "InstanceId", aws_instance.app.id],
@@ -88,11 +154,7 @@ resource "aws_cloudwatch_dashboard" "ci_cd_dashboard" {
         }
       },
       {
-        "type" : "metric",
-        "x" : 12,
-        "y" : 0,
-        "width" : 12,
-        "height" : 6,
+        "type" : "metric", "x" : 12, "y" : 0, "width" : 12, "height" : 6,
         "properties" : {
           "metrics" : [
             ["CWAgent", "mem_used_percent", "InstanceId", aws_instance.app.id],
@@ -116,67 +178,6 @@ resource "aws_cloudwatch_dashboard" "autowake" {
   dashboard_name = "${var.project_name}-${var.environment}-autowake"
 
   dashboard_body = jsonencode({
-    widgets = [
-      {
-        "type" : "metric",
-        "x" : 0,
-        "y" : 0,
-        "width" : 24,
-        "height" : 6,
-        "properties" : {
-          "region" : data.aws_region.current.id,
-          "title" : "Lambda reaper — Invocations & Errors (1m)",
-          "view" : "timeSeries",
-          "stat" : "Sum",
-          "period" : 60,
-          "stacked" : false,
-          "metrics" : [
-            ["AWS/Lambda", "Invocations", "FunctionName", var.reaper_function_name, { "stat" : "Sum", "period" : 60 }],
-            [".", "Errors", ".", ".", { "stat" : "Sum", "period" : 60, "yAxis" : "right" }]
-          ],
-          "yAxis" : {
-            "left" : { "label" : "Invocations" },
-            "right" : { "label" : "Errors" }
-          }
-        }
-      },
-      {
-        "type" : "metric",
-        "x" : 0,
-        "y" : 6,
-        "width" : 24,
-        "height" : 6,
-        "properties" : {
-          "region" : data.aws_region.current.id,
-          "title" : "EC2 — CPU & StatusChecks (1m)",
-          "view" : "timeSeries",
-          "stat" : "Average",
-          "period" : 60,
-          "stacked" : false,
-          "metrics" : [
-            ["AWS/EC2", "CPUUtilization", "InstanceId", aws_instance.app.id, { "stat" : "Average", "period" : 60 }],
-            [".", "StatusCheckFailed_Instance", "InstanceId", aws_instance.app.id, { "stat" : "Maximum", "period" : 60, "yAxis" : "right" }],
-            [".", "StatusCheckFailed_System", "InstanceId", aws_instance.app.id, { "stat" : "Maximum", "period" : 60, "yAxis" : "right" }]
-          ],
-          "yAxis" : {
-            "left" : { "label" : "CPU %" },
-            "right" : { "label" : "Status failed (0/1)" }
-          }
-        }
-      },
-      {
-        "type" : "log",
-        "x" : 0,
-        "y" : 12,
-        "width" : 24,
-        "height" : 8,
-        "properties" : {
-          "region" : data.aws_region.current.id,
-          "title" : "Reaper timeline — recent decisions",
-          "query" : local.reaper_logs_query,
-          "view" : "table"
-        }
-      }
-    ]
+    widgets = local.autowake_widgets
   })
 }

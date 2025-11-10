@@ -35,3 +35,4 @@ variable "ssm_param_last_wake" {
   type        = string
   default     = "/ci-wake/last_wake"
 }
+
