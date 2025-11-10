@@ -1,10 +1,78 @@
+############################################
+# Terraform — local state & temp files
+############################################
 .terraform/
-.terraform.lock.hcl
-terraform.tfstate
-terraform.tfstate.*
-*.tfvars
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Optional: ignore provider lock file (commit only if pinned intentionally)
+ .terraform.lock.hcl
+
+############################################
+# Terraform plans & build artifacts
+############################################
+tfplan
+tf.plan
 *.zip
-.tmp/
-.site.zip
-__pycache__/
-node_modules/
+*.tar.gz
+*.tmp
+*.bak
+
+############################################
+# Lambda build outputs & Python caches
+############################################
+build/
+infra/**/build/
+infra/**/.tmp/
+lambdas/**/__pycache__/
+lambdas/**/.pytest_cache/
+lambdas/**/venv/
+lambdas/**/dist/
+lambdas/**/package/
+lambdas/**/node_modules/
+
+############################################
+# Node / App frontend
+############################################
+app/node_modules/
+app/.cache/
+app/.next/
+app/dist/
+app/build/
+npm-debug.log*
+yarn-error.log*
+
+############################################
+# Wait-site generated files
+############################################
+wait-site/.cache/
+wait-site/build/
+wait-site/dist/
+
+############################################
+# Local environment & OS junk
+############################################
+.DS_Store
+Thumbs.db
+.env
+.envrc
+*.swp
+*.bak
+*.tmp
+*.log
+
+############################################
+# CloudWatch Agent configs (optional to version)
+############################################
+cloudwatch/amazon-cloudwatch-agent.json
+
+############################################
+# Bootstrap / temp JSON
+############################################
+tf-allow.json
+tf-config.json

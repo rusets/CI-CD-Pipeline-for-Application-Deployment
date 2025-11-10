@@ -2,42 +2,37 @@
 set -euxo pipefail
 
 # -----------------------------------------------------------------------------
-# User Data (cloud-init)
-# - Installs Apache + Git
-# - Clones your public Git repository
-# - Publishes files into /var/www/html
+# User Data — Deploy static site from Git repository
 # -----------------------------------------------------------------------------
 
-# Variables passed from Terraform
-SITE_GIT_URL="${SITE_GIT_URL}"   # Repository URL
-SITE_BRANCH="${SITE_BRANCH}"     # Branch to clone
-SITE_SUBDIR="${SITE_SUBDIR}"     # Optional subdirectory with site files
+SITE_GIT_URL="${SITE_GIT_URL}"
+SITE_BRANCH="${SITE_BRANCH}"
+SITE_SUBDIR="${SITE_SUBDIR}"
 
-# 1) Update and install packages
+# Install Apache and Git
 dnf -y update
 dnf -y install httpd git
 
-# 2) Clone repository
+# Clone repository
 workdir="/root/site"
 rm -rf "$workdir"
 git clone --depth 1 --branch "$SITE_BRANCH" "$SITE_GIT_URL" "$workdir"
 
-# 3) Determine source folder to publish
+# Select source directory
 if [ -n "$SITE_SUBDIR" ] && [ "$SITE_SUBDIR" != "." ]; then
   SRC="$workdir/$SITE_SUBDIR"
 else
   SRC="$workdir"
 fi
 
-# 4) Publish files to Apache document root
+# Deploy to Apache document root
 install -d -m 0755 /var/www/html
-# Copy contents (including hidden files) safely
 shopt -s dotglob nullglob
 cp -a "$SRC"/* /var/www/html/ || true
 shopt -u dotglob nullglob
 chown -R apache:apache /var/www/html || true
 
-# 5) Provide fallback page if no index.html was found
+# Fallback page if index.html missing
 if [ ! -f /var/www/html/index.html ]; then
   cat > /var/www/html/index.html <<'HTML'
 <!doctype html>
@@ -59,12 +54,12 @@ if [ ! -f /var/www/html/index.html ]; then
   <main class="card">
     <div class="pill">Apache on Amazon Linux 2023</div>
     <h1>It works!</h1>
-    <p>Files weren't found in your repository/subdir. Put your site into <code>app/public</code> (or change <em>site_subdir</em>) and re-apply.</p>
+    <p>Files weren't found in your repository/subdir. Put your site into <code>app/public</code> (or update <em>site_subdir</em>) and re-apply Terraform.</p>
   </main>
 </body>
 </html>
 HTML
 fi
 
-# 6) Enable and start Apache
+# Enable and start Apache
 systemctl enable --now httpd

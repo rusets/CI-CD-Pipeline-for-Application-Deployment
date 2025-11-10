@@ -1,37 +1,32 @@
 #!/bin/bash
 # -----------------------------------------------------------------------------
-# User Data (cloud-init)
-# - Installs Apache & unzip on Amazon Linux 2023
-# - Unpacks website files (Base64 ZIP from Terraform) into /var/www/html
-# - Shows a small fallback page if index.html isn't present
+# User Data — Deploys site on Amazon Linux 2023
 # -----------------------------------------------------------------------------
 
-# Fail fast on errors, unset vars, and failed pipes; echo commands as they run
 set -euxo pipefail
 
-# These are injected by Terraform templatefile(..)
 PROJECT_NAME="${PROJECT_NAME}"
 ENVIRONMENT="${ENVIRONMENT}"
 ARCHIVE_B64="${ARCHIVE_B64}"
 
-# 1) Install packages
+# Install Apache and unzip
 dnf -y update
 dnf -y install httpd unzip
 
-# 2) Prepare web root
+# Prepare web root
 install -d -m 0755 /var/www/html
 rm -rf /var/www/html/*
 
-# 3) Unpack site from Base64 ZIP (created by Terraform from infra/app/public)
+# Unpack site archive from Base64 ZIP
 tmp_zip="/tmp/site.zip"
 echo "$ARCHIVE_B64" | base64 -d > "$tmp_zip"
 unzip -o "$tmp_zip" -d /var/www/html/ || true
 
-# 4) Ownership & SELinux (if enabled)
+# Set permissions and restore SELinux context
 chown -R apache:apache /var/www/html || true
 restorecon -R /var/www/html || true
 
-# 5) Fallback page if no index.html was in the archive
+# Create fallback page if index.html is missing
 if [ ! -f /var/www/html/index.html ]; then
   cat > /var/www/html/index.html <<'HTML'
 <!doctype html>
@@ -54,12 +49,12 @@ if [ ! -f /var/www/html/index.html ]; then
       Apache on Amazon Linux 2023
     </div>
     <h1>It works!</h1>
-    <p>Files weren't found in your local archive. Put your site into <code>infra/app/public/</code> and re-apply Terraform.</p>
+    <p>Files weren't found in your local archive. Put your site into <code>app/public/</code> and re-apply Terraform.</p>
   </main>
 </body>
 </html>
 HTML
 fi
 
-# 6) Enable and start Apache
+# Enable and start Apache
 systemctl enable --now httpd

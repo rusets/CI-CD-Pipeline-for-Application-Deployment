@@ -1,0 +1,79 @@
+:root{
+  --text:#eaf2ff;
+  --bg:#070a12;
+  --card-bg: rgba(20,24,36,.45);
+  --card-bd: rgba(255,255,255,.12);
+  --glass: rgba(255,255,255,.06);
+  --brand-start:#00c8ff;
+  --brand-end:#ff0099;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; color:var(--text);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background: var(--bg);
+  overflow:hidden;
+}
+/* Brand */
+.brand{position:fixed; top:20px; left:20px; z-index:10; padding:10px 14px;
+  border-radius:14px; background:var(--glass);
+  border:1px solid var(--card-bd); backdrop-filter: blur(8px); font-weight:800;
+}
+.brand__link{color:var(--text); text-decoration:none; display:inline-block}
+.brand__link:hover{opacity:.9}
+
+/* Backgrounds */
+.aurora{
+  position:absolute; inset:-10% -10% -10% -10%;
+  filter: blur(36px) saturate(120%);
+  background:
+    radial-gradient(40% 60% at 10% 20%, rgba(255,0,153,.25), transparent 60%),
+    radial-gradient(45% 55% at 90% 10%, rgba(0,200,255,.22), transparent 60%),
+    radial-gradient(40% 50% at 50% 80%, rgba(0,255,153,.18), transparent 60%);
+  animation: float 9s ease-in-out infinite alternate;
+}
+.grid{
+  position:absolute; inset:0; opacity:.22;
+  background-image:
+    linear-gradient(#ffffff10 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff0a 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask: linear-gradient(180deg, #000, transparent 85%);
+}
+@keyframes float{ to{ transform: translateY(-18px) } }
+
+/* Layout */
+.center{ position:relative; height:100vh; display:grid; place-items:center; padding:24px }
+.panel{
+  width:min(760px, 92vw);
+  padding:42px;
+  border-radius:28px;
+  background: var(--card-bg);
+  border:1px solid var(--card-bd);
+  box-shadow: 0 18px 90px rgba(0,0,0,.50);
+  text-align:center;
+}
+.title{ font-size:38px; font-weight:800; margin:0 0 12px }
+.subtitle{ opacity:.9; margin:0 0 20px; font-weight:300 }
+
+.actions{ display:flex; gap:12px; justify-content:center; margin-bottom:8px; flex-wrap:wrap }
+.btn{
+  padding:14px 22px; border-radius:16px; border:0;
+  background: linear-gradient(135deg, var(--brand-start), var(--brand-end));
+  color:#fff; font-weight:800; letter-spacing:.3px;
+  box-shadow: 0 14px 40px rgba(0,200,255,.25);
+  cursor:pointer; transition: transform .2s ease, opacity .2s ease;
+}
+.btn:hover{ transform: translateY(-2px) }
+.btn.is-disabled{ opacity:.6; cursor:not-allowed }
+.btn--ghost{ background: transparent; border:1px solid var(--card-bd); color:var(--text) }
+
+.progress{ margin:16px auto 0; width:min(520px,66vw); height:12px; border-radius:999px;
+  background: rgba(255,255,255,.08); overflow:hidden; border:1px solid var(--card-bd);
+}
+.progress .bar{ --pct:0%; width:var(--pct); height:100%;
+  background: linear-gradient(90deg, var(--brand-start), var(--brand-end));
+  transition: width .35s ease;
+}
+.note{ margin-top:12px; opacity:.8; font-size:14px }

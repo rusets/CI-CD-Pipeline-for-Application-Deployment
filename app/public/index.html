@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>CI-CD-Pipeline-for-Application-Deployment</title>
+  <meta name="description" content="Automated CI/CD pipeline on AWS: Terraform IaC + GitHub Actions with OIDC, production-grade.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css"/>
+</head>
+<body>
+  <!-- Top bar -->
+  <header class="topbar">
+    <a class="brand" href="https://rusets.com" target="_blank" rel="noopener">Ruslan AWS 🚀</a>
+    <div class="onlylink"><a href="https://github.com/rusets" target="_blank" rel="noopener">GitHub</a></div>
+  </header>
+
+  <!-- Background layers -->
+  <div class="bg-aurora"></div>
+  <div class="bg-grid"></div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero__content">
+      <h1 class="hero__title">CI-CD-Pipeline-for-Application-Deployment</h1>
+      <p class="hero__lead">
+        A fully automated deployment and management system for a web application on AWS — built from scratch using
+        <strong>Infrastructure as Code (Terraform)</strong> and <strong>CI/CD via GitHub Actions with OIDC</strong>.
+        Not just a website — a <strong>production-grade infrastructure pipeline</strong>.
+      </p>
+      <div class="hero__badges">
+        <img src="assets/img/aws.svg" alt="AWS">
+        <img src="assets/img/terraform.svg" alt="Terraform">
+        <img src="assets/img/github.svg" alt="GitHub Actions">
+        <img src="assets/img/oidc.svg" alt="OIDC">
+        <img src="assets/img/ec2.svg" alt="EC2">
+        <img src="assets/img/s3.svg" alt="S3">
+        <img src="assets/img/dynamodb.svg" alt="DynamoDB">
+        <img src="assets/img/cloudwatch.svg" alt="CloudWatch">
+      </div>
+    </div>
+  </section>
+
+  <!-- What it does -->
+  <section class="section">
+    <div class="container">
+      <h2 class="section__title">What the pipeline delivers</h2>
+      <div class="grid grid--2">
+        <div class="card">
+          <h3>1) Provisions AWS Infrastructure</h3>
+          <ul class="list">
+            <li>EC2 instance (Amazon Linux 2023)</li>
+            <li>Security Group (HTTP, SSH optional)</li>
+            <li>IAM Role + Instance Profile for CloudWatch Agent</li>
+            <li>S3 backend & DynamoDB table for Terraform state locking</li>
+            <li>SNS Topic + Email subscription for CloudWatch alarms</li>
+            <li>CloudWatch dashboard for CPU & status checks</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>2) Automatically deploys the site on EC2</h3>
+          <ul class="list">
+            <li>GitHub Actions workflow (<code>terraform.yml</code>) with OIDC</li>
+            <li>Environment switch: <code>dev</code> / <code>prod</code>; action: <code>apply</code> / <code>destroy</code></li>
+            <li>User data bootstrap script to:</li>
+            <ul class="list">
+              <li>Install Apache</li>
+              <li>Deploy content from <code>app/public/</code></li>
+              <li>Show a fallback page if empty</li>
+            </ul>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>3) Operational telemetry & alerts</h3>
+          <ul class="list">
+            <li>Email alerts when instance fails (StatusCheckFailed)</li>
+            <li>CPU &gt; 70% threshold notifications</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Optional waiting page (wake/sleep)</h3>
+          <ul class="list">
+            <li>Neon-styled S3 + CloudFront waiting page</li>
+            <li>Manual <strong>Wake Up</strong> button triggers Terraform Apply via API</li>
+            <li>Auto redirect & timed auto-sleep</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture (compact) -->
+  <section class="section">
+    <div class="container">
+      <h2 class="section__title">Architecture Overview</h2>
+      <div class="arch">
+        <div class="arch__row">
+          <div class="pill">GitHub Actions (OIDC)</div>
+          <div class="line"></div>
+          <div class="pill">Terraform</div>
+          <div class="line"></div>
+          <div class="pill">AWS</div>
+        </div>
+        <div class="arch__grid">
+          <div class="pill pill--aws">EC2</div>
+          <div class="pill pill--aws">IAM</div>
+          <div class="pill pill--aws">VPC / SG</div>
+          <div class="pill pill--aws">S3 + DynamoDB</div>
+          <div class="pill pill--aws">CloudWatch</div>
+          <div class="pill pill--aws">SNS</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer (no extra links) -->
+  <footer class="footer">
+    <div class="container footer__grid">
+      <div class="footer__brand">© <span id="year"></span> Ruslan AWS — CI/CD on AWS</div>
+      <div class="footer__spacer"></div>
+    </div>
+  </footer>
+
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+:root{
+  --bg:#070a12;
+  --text:#eaf2ff;
+  --muted:#b9c7da;
+  --glass: rgba(255,255,255,.06);
+  --glass-bd: rgba(255,255,255,.14);
+  --brand-a:#00e7ff;
+  --brand-b:#8a2be2;
+  --brand-c:#ff00a8;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  overflow-x:hidden;
+}
+
+/* Top bar */
+.topbar{
+  position:sticky; top:0; z-index:30; display:flex; align-items:center; justify-content:space-between;
+  padding:16px 20px; backdrop-filter: blur(12px);
+  background: linear-gradient(180deg, rgba(10,14,22,.72), rgba(10,14,22,.44));
+  border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.brand{
+  color:var(--text); text-decoration:none; font-weight:900; letter-spacing:.3px; font-size:18px;
+}
+.brand:hover{ opacity:.9 }
+.onlylink a{
+  color:#fff; text-decoration:none; font-weight:800; padding:10px 14px; border-radius:12px;
+  background: linear-gradient(135deg, var(--brand-a), var(--brand-c)); box-shadow:0 12px 36px rgba(0,231,255,.22);
+}
+.onlylink a:hover{ opacity:.92 }
+
+/* Backgrounds */
+.bg-aurora{
+  position:fixed; inset:-12% -12% -12% -12%; z-index:-2;
+  filter: blur(36px) saturate(120%);
+  background:
+    radial-gradient(40% 60% at 10% 20%, rgba(255,0,153,.24), transparent 60%),
+    radial-gradient(45% 55% at 90% 10%, rgba(0,200,255,.22), transparent 60%),
+    radial-gradient(40% 50% at 50% 80%, rgba(0,255,153,.18), transparent 60%),
+    conic-gradient(from 220deg at 65% 35%, rgba(138,43,226,.14), transparent 30% 60%, rgba(0,231,255,.14) 70% 100%);
+  animation: float 12s ease-in-out infinite alternate;
+}
+.bg-grid{
+  position:fixed; inset:0; z-index:-1; opacity:.22;
+  background-image:
+    linear-gradient(#ffffff14 1px, transparent 1px),
+    linear-gradient(90deg,#ffffff10 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask: linear-gradient(180deg, #000, transparent 82%);
+}
+@keyframes float{ to{ transform: translateY(-18px) } }
+
+/* Hero */
+.hero{ position:relative; padding:86px 24px 48px; display:grid; place-items:center; text-align:center }
+.hero__content{ width:min(1100px, 94vw) }
+.hero__title{ font-size:clamp(28px, 6vw, 52px); margin:0 0 12px; font-weight:900; line-height:1.06 }
+.hero__lead{ margin:0 auto 10px; color:var(--muted); font-size:clamp(16px,2.6vw,19px) }
+.hero__badges{ display:flex; gap:14px; justify-content:center; align-items:center; flex-wrap:wrap; margin-top:16px; opacity:.9 }
+.hero__badges img{ height:26px; filter: drop-shadow(0 0 10px rgba(0,231,255,.25)) }
+
+/* Sections */
+.section{ position:relative; padding:46px 24px }
+.container{ width:min(1100px, 94vw); margin:0 auto }
+.section__title{ font-size:clamp(22px,4.5vw,32px); margin:0 0 14px; text-align:center }
+
+/* Cards / Lists */
+.grid{ display:grid; gap:16px }
+.grid--2{ grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) }
+.card{
+  padding:20px; border-radius:18px; background: rgba(12,16,26,.65);
+  border:1px solid var(--glass-bd); backdrop-filter: blur(12px); box-shadow:0 16px 60px rgba(0,0,0,.45)
+}
+.card h3{ margin:0 0 8px }
+.list{ margin:0; padding-left:18px; color:var(--muted) }
+.list ul{ margin:6px 0 0 }
+code{ background:rgba(0,0,0,.35); padding:2px 6px; border-radius:8px }
+
+/* Architecture */
+.arch{ margin-top:8px }
+.arch__row{ display:flex; align-items:center; gap:10px; justify-content:center; flex-wrap:wrap; margin-bottom:12px }
+.pill{
+  padding:8px 14px; border-radius:999px; background:rgba(255,255,255,.06); border:1px solid var(--glass-bd);
+}
+.pill--aws{ background:rgba(0,231,255,.08); border-color: rgba(0,231,255,.25) }
+.line{ width:32px; height:2px; background:linear-gradient(90deg,var(--brand-a),var(--brand-c)); opacity:.65 }
+.arch__grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px }
+
+/* Footer */
+.footer{ padding:26px 0 }
+.footer__grid{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap }
+.footer__brand{ opacity:.9 }
+
+/* Responsive tweaks */
+@media (max-width:640px){
+  .topbar{ padding:12px 14px }
+  .onlylink a{ padding:8px 12px }
+}
