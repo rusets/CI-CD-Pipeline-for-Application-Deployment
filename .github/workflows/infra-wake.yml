@@ -9,12 +9,11 @@ on:
         type: choice
         options: [apply, destroy]
         default: apply
-
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'infra/infra-wake/**'
-      - '.github/workflows/infra-wake.yml'
+      - "infra/infra-wake/**"
+      - ".github/workflows/infra-wake.yml"
 
 permissions:
   id-token: write
@@ -32,6 +31,9 @@ env:
   AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
   PROJECT_NAME: ruslan-aws
   ENVIRONMENT: dev
+  TF_VAR_ssm_param_last_wake: /ci-wake/last_wake
+  TF_VAR_instance_tag_key: Name
+  TF_VAR_instance_tag_value: ruslan-aws-dev
 
 jobs:
   terraform:
@@ -59,7 +61,7 @@ jobs:
           terraform_version: 1.9.5
 
       - name: Terraform init
-        run: terraform init -upgrade
+        run: terraform init -upgrade -lock-timeout=300s
 
       - name: Terraform fmt & validate
         run: |
@@ -67,12 +69,16 @@ jobs:
           terraform validate
 
       - name: Terraform plan
-        run: terraform plan -no-color -var="environment=${ENVIRONMENT}"
+        run: terraform plan -no-color -lock-timeout=300s -var="environment=${ENVIRONMENT}"
 
       - name: Terraform apply
         if: ${{ (inputs.action || 'apply') == 'apply' }}
-        run: terraform apply -auto-approve -var="environment=${ENVIRONMENT}"
+        run: terraform apply -auto-approve -lock-timeout=300s -var="environment=${ENVIRONMENT}"
+
+      - name: Show outputs
+        if: ${{ (inputs.action || 'apply') == 'apply' }}
+        run: terraform output -json | jq -r 'to_entries[] | "\(.key)=\(.value.value)"'
 
       - name: Terraform destroy
         if: ${{ (inputs.action || 'apply') == 'destroy' }}
-        run: terraform destroy -auto-approve -var="environment=${ENVIRONMENT}"
+        run: terraform destroy -auto-approve -lock-timeout=300s -var="environment=${ENVIRONMENT}"
