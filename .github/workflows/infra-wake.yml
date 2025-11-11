@@ -9,6 +9,11 @@ on:
         type: choice
         options: [apply, destroy]
         default: apply
+  push:
+    branches: [main]
+    paths:
+      - "infra/infra-wake/**"
+      - ".github/workflows/infra-wake.yml"
 
 permissions:
   id-token: write
@@ -49,6 +54,20 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Package lambdas (stage dirs for archive_file)
+        run: |
+          set -eux
+          ROOT="$GITHUB_WORKSPACE"
+          LAM="$ROOT/lambdas"
+          BUILD="$ROOT/build"
+          STAGE="$BUILD/stage"
+          mkdir -p "$STAGE/status" "$STAGE/reaper" "$BUILD"
+          rsync -a --delete "$LAM/status/" "$STAGE/status/"
+          rsync -a --delete "$LAM/reaper/" "$STAGE/reaper/"
+          mkdir -p "$STAGE/status/_common" "$STAGE/reaper/_common"
+          rsync -a "$LAM/_common/" "$STAGE/status/_common/"
+          rsync -a "$LAM/_common/" "$STAGE/reaper/_common/"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -64,11 +83,11 @@ jobs:
           terraform validate
 
       - name: Terraform plan
-        run: terraform plan -no-color -lock-timeout=300s -var="environment=${ENVIRONMENT}"
+        run: terraform plan -no-color -refresh=false -lock-timeout=300s -var="environment=${ENVIRONMENT}"
 
       - name: Terraform apply
         if: ${{ (inputs.action || 'apply') == 'apply' }}
-        run: terraform apply -auto-approve -lock-timeout=300s -var="environment=${ENVIRONMENT}"
+        run: terraform apply -auto-approve -refresh=false -lock-timeout=300s -var="environment=${ENVIRONMENT}"
 
       - name: Show outputs
         if: ${{ (inputs.action || 'apply') == 'apply' }}
@@ -76,4 +95,4 @@ jobs:
 
       - name: Terraform destroy
         if: ${{ (inputs.action || 'apply') == 'destroy' }}
-        run: terraform destroy -auto-approve -lock-timeout=300s -var="environment=${ENVIRONMENT}"
+        run: terraform destroy -auto-approve -refresh=false -lock-timeout=300s -var="environment=${ENVIRONMENT}"
