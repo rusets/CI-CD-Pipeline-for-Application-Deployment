@@ -1,3 +1,4 @@
+
 # 🚀 Ruslan AWS — CI/CD Pipeline for Application Deployment
 
 ![Terraform](https://img.shields.io/badge/IaC-Terraform-blueviolet)
@@ -8,16 +9,25 @@
 
 ---
 
-## 🌐 Project Overview
+## 🌐 Live Demo
 
-**Ruslan AWS CI/CD Pipeline** demonstrates a **production‑grade, fully automated deployment system** built on **AWS** using **Terraform** and **GitHub Actions (OIDC)**.  
-It deploys a cost‑optimized web application infrastructure that wakes up automatically on user demand and sleeps during idle time — keeping costs near zero while maintaining instant availability.
+🔹 **Wait Page:** [https://app.ci-wake.online](https://app.ci-wake.online)  
+When you click **“Wake Up”**, the EC2 instance powers on automatically and the site becomes available.  
+After **5 minutes of inactivity**, it shuts down automatically — managed by AWS Lambda and CloudWatch.
 
-**Key goals:**
-- Complete end‑to‑end Infrastructure as Code on AWS.
-- Zero manual steps — everything runs via Terraform and CI/CD.
-- Smart Auto‑Wake / Auto‑Sleep lifecycle powered by Lambda and CloudWatch.
-- Real AWS domains, SSL, metrics, and email alerts — ready for portfolio demos.
+---
+
+## 🧠 Project Overview
+
+This project demonstrates a **production-grade AWS CI/CD pipeline** that deploys and manages an application using Infrastructure as Code (IaC).  
+It combines Terraform, GitHub Actions, and serverless automation to minimize cost while keeping the environment responsive and observable.
+
+**Core features:**
+- Full **Infrastructure as Code** (Terraform)
+- **GitHub Actions (OIDC)** — no long-term AWS credentials
+- **Serverless control plane:** Lambda + EventBridge
+- **Static wait page** on **S3 + CloudFront**
+- **Real-time monitoring** via CloudWatch and SNS
 
 ---
 
@@ -25,33 +35,30 @@ It deploys a cost‑optimized web application infrastructure that wakes up autom
 
 ```mermaid
 flowchart TD
-  A[Wait Page (S3 + CloudFront)] -->|Wake Up| B[API Gateway (HTTP)]
-  B --> C[Lambda — wake]
-  B --> D[Lambda — status]
-  C --> E[EC2 Instance]
+  A[Wait Page (S3 + CloudFront)] -->|POST /wake| B[API Gateway (HTTP)]
+  A -->|GET /status| B
+  B --> C[Lambda: wake]
+  B --> D[Lambda: status]
+  C --> E[(EC2 Instance)]
   D --> E
-  F[Lambda — reaper (EventBridge 1m)] --> E
-  E --> G[CloudWatch Metrics & Dashboards]
-  G --> H[SNS Email Notifications]
+  F[EventBridge Rule (1m)] --> G[Lambda: reaper]
+  G --> E
+  E --> H[CloudWatch Dashboards & Alarms]
+  H --> I[SNS Email Notifications]
 ```
 
 ---
 
-## 🧩 Components and AWS Services
+## 🧩 AWS Components
 
-| Category | Service | Purpose |
-|-----------|----------|----------|
-| **Compute** | EC2 | Hosts the main application (Amazon Linux 2023 + Apache) |
-| **Serverless** | Lambda | wake, status, reaper — start/stop logic |
-| **API Management** | API Gateway (HTTP) | Triggers Lambda via REST endpoints |
-| **Automation** | EventBridge | Runs the reaper function every minute |
-| **Storage** | S3 | Hosts static wait page |
-| **CDN / SSL** | CloudFront + ACM | HTTPS delivery for app.ci-wake.online |
-| **Monitoring** | CloudWatch | Dashboards, metrics, logs |
-| **Notifications** | SNS | Sends CPU/Status alerts via email |
-| **Secrets / Config** | SSM Parameter Store | Stores last wake timestamp |
-| **CI/CD** | GitHub Actions (OIDC) | Terraform plan/apply/destroy |
-| **Infrastructure Code** | Terraform | Complete IaC for all AWS resources |
+| Category | Services |
+|-----------|-----------|
+| **Compute** | EC2 (Amazon Linux 2023) — app hosting |
+| **Serverless** | Lambda (`wake`, `status`, `reaper`) |
+| **API & Events** | API Gateway (HTTP), EventBridge |
+| **State & Config** | SSM Parameter Store (`/ci-wake/last_wake`), S3, DynamoDB (Terraform backend) |
+| **Monitoring & Alerts** | CloudWatch (metrics, dashboards, alarms), SNS (email) |
+| **Security & Access** | IAM roles, OIDC trust for GitHub Actions |
 
 ---
 
@@ -59,69 +66,97 @@ flowchart TD
 
 | Mechanism | Description |
 |------------|-------------|
-| 💤 **Auto Sleep** | EC2 stops automatically after 5 minutes of inactivity |
-| ⚡ **Wake on Demand** | EC2 starts when user clicks “Wake Up” |
-| ☁️ **S3 + CloudFront** | Always‑Free static hosting for wait page |
-| 🧠 **Serverless Control Plane** | Lambda executes in milliseconds — near‑free |
-| 💾 **Terraform State Backend** | Stored in S3 + DynamoDB for reliability |
+| 💤 **Auto Sleep** | EC2 automatically stops after inactivity (via `reaper`). |
+| ⚡ **Wake on Demand** | EC2 only starts when a user clicks “Wake Up”. |
+| ☁️ **Static Wait Page** | S3 + CloudFront = Always-Free tier. |
+| 🧠 **Serverless Control Plane** | Lambda only runs for milliseconds. |
+| 💾 **S3 + DynamoDB Backend** | Cheap, durable Terraform state management. |
 
 ---
 
 ## 🚀 CI/CD Workflow (GitHub Actions)
 
-- OIDC authentication (no AWS keys stored)
-- Terraform Init → Plan → Apply pipeline
-- Two workflows:
-  - **terraform.yml** — main infrastructure (EC2, CloudWatch, SNS, etc.)
-  - **infra‑wake.yml** — serverless layer (wake/status/reaper)
-- Concurrency locking ensures no parallel runs
+- **OIDC authentication** — no static AWS credentials.  
+- `terraform.yml`: main infrastructure (EC2, IAM, CloudWatch, SNS).  
+- `infra-wake.yml`: Lambda packaging, IAM, and scheduling logic.  
+- **Concurrency groups** prevent simultaneous runs.  
+- **Terraform plan/apply/destroy** automated per commit.  
 
 ---
 
-## 📊 Monitoring
+## 📊 Monitoring & Alerts
 
-CloudWatch Dashboards include:
-- EC2 CPU & Status Checks
-- Lambda Invocations & Errors (wake, status, reaper)
-- CWAgent metrics (memory, disk)
-- SNS Alerts (email)
+- **Dashboards:**
+  - EC2 — CPU Utilization, Status Checks  
+  - Lambda — Invocations, Duration, Errors  
+  - CloudWatch Agent — Memory, Disk  
+- **Alarms:**
+  - CPU > 70% → triggers **SNS email**
+- **SSM:**  
+  - `/ci-wake/last_wake` tracks the last wake timestamp
 
----
-
-## 🧭 Domain & Certificates
-
-| Component | Domain | Certificate ARN |
-|------------|---------|----------------|
-| 🌐 Wait Site | [app.ci-wake.online](https://app.ci-wake.online) | `arn:aws:acm:us-east-1:097635932419:certificate/0d400c46-2086-41b1-b6c2-74112715701a` |
-| ⚙️ API Gateway | api.ci-wake.online | Same ACM certificate |
-
----
-
-## 🧪 Simulate Load (Trigger Alarm)
+### 🧪 Simulate Load (trigger alert)
 
 ```bash
 sudo dnf install -y stress-ng
 sudo stress-ng --cpu 4 --timeout 120
 ```
 
-Run this on EC2 to exceed 70% CPU and trigger CloudWatch alarm.
+---
+
+## 🧭 Domains & Certificates
+
+| Component | Domain | Description |
+|------------|---------|-------------|
+| 🌐 Wait Page | [app.ci-wake.online](https://app.ci-wake.online) | Hosted on S3 + CloudFront |
+| ⚙️ API Gateway | api.ci-wake.online | Custom domain + ACM certificate |
 
 ---
 
-## 📁 Folder Structure
+## 🧾 Folder Structure
 
 ```
 ci-cd-pipeline-aws/
-├── app/public/
+├── app/
+│   └── public/
+│       ├── index.html
+│       └── assets/
+│           ├── css/
+│           └── js/
 ├── infra/
-│   ├── main.tf, variables.tf, dashboard.tf, sns.tf
-│   ├── infra-wake/ (wake/status/reaper Lambdas)
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── providers.tf
+│   ├── backend.tf
+│   ├── outputs.tf
+│   ├── alarms.tf
+│   ├── dashboard.tf
+│   ├── sns.tf
+│   ├── user_data.sh
+│   ├── user_data.tpl
+│   └── infra-wake/
+│       ├── main.tf
+│       ├── iam.tf
+│       ├── schedule.tf
+│       ├── variables.tf
+│       ├── outputs.tf
+│       ├── backend.tf
+│       └── versions.tf
 ├── lambdas/
-│   ├── wake/index.js
-│   ├── status/index.py
-│   └── reaper/index.py
+│   ├── wake/    └── index.js
+│   ├── status/  └── index.py
+│   ├── reaper/  └── index.py
+│   └── _common/ └── timeparse.py
 ├── wait-site/
-│   ├── index.html + assets/
+│   ├── index.html
+│   └── assets/
+│       ├── css/
+│       └── js/
+├── scripts/
+│   ├── deploy_on_instance.sh
+│   └── app.service
+├── cloudwatch/
+│   └── amazon-cloudwatch-agent.json
 ├── .github/workflows/
 │   ├── terraform.yml
 │   └── infra-wake.yml
@@ -130,23 +165,27 @@ ci-cd-pipeline-aws/
 
 ---
 
-## 📸 Screenshots
+## 🖼️ Screenshots
 
-| # | Description | File |
-|---|--------------|------|
-| 1️⃣ | Wait Page (before wake) | `docs/screenshots/1-wait-page.png` |
-| 2️⃣ | App Running (after wake) | `docs/screenshots/2-app-running.png` |
-| 3️⃣ | GitHub Actions – infra‑wake.yml | `docs/screenshots/3-github-actions-wake.png` |
-| 4️⃣ | GitHub Actions – terraform.yml | `docs/screenshots/4-github-actions-terraform.png` |
-| 5️⃣ | CloudWatch Dashboard | `docs/screenshots/5-cloudwatch-dashboard.png` |
-| 6️⃣ | SNS Alert Email | `docs/screenshots/6-sns-alert-email.png` |
+| # | Description | Image |
+|---|--------------|--------|
+| 1️⃣ | Wait Page (before wake) | ![Wait Page](docs/screenshots/1-wait-page.png) |
+| 2️⃣ | Running Application | ![App Running](docs/screenshots/2-app-running.png) |
+| 3️⃣ | GitHub Actions — infra-wake.yml | ![Wake Workflow](docs/screenshots/3-github-actions-wake.png) |
+| 4️⃣ | GitHub Actions — terraform.yml | ![Terraform Workflow](docs/screenshots/4-github-actions-terraform.png) |
+| 5️⃣ | CloudWatch Dashboard | ![CloudWatch Dashboard](docs/screenshots/5-cloudwatch-dashboard.png) |
+| 6️⃣ | SNS Email Alert | ![SNS Email Alert](docs/screenshots/6-sns-alert-email.png) |
 
 ---
 
-## 🧠 Highlights
+## 🧠 Key Highlights
 
-- Fully automated Terraform CI/CD pipeline.  
-- Real AWS domain with SSL and auto‑wake logic.  
-- EventBridge + Lambda enable intelligent shutdown.  
-- CloudWatch dashboards visualize uptime & metrics.  
-- Portfolio‑ready example of DevOps automation.
+- **Fully automated AWS deployment** with Terraform and GitHub Actions.  
+- **Zero manual credentials** — OIDC trust policy.  
+- **Dynamic cost control** — instance wakes/sleeps automatically.  
+- **Visual dashboards & alerts** for real-world observability.  
+- **Portfolio-grade presentation** — real domain, screenshots, full automation.
+
+---
+
+© 2025 Ruslan AWS Projects — All rights reserved.
