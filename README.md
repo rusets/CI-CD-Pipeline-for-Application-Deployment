@@ -33,18 +33,43 @@ It demonstrates how to build a **production-grade CI/CD environment** that stays
 
 ```mermaid
 flowchart LR
-  A["🌐 CloudFront + S3<br/>Wait Page (app.ci-wake.online)"] -->|POST /wake| B["⚙️ API Gateway (HTTP)"]
+  %% === Frontend Section ===
+  subgraph Frontend["🌐 Frontend Layer"]
+    A["🟨 CloudFront + S3<br/>Wait Page (app.ci-wake.online)"]
+  end
+
+  %% === API Section ===
+  subgraph API["⚙️ API Gateway Layer"]
+    B["🟨 API Gateway (HTTP)<br/>Trigger Lambda functions"]
+  end
+
+  %% === Lambda Control Plane ===
+  subgraph Lambdas["☁️ Serverless Control Plane"]
+    C["🟢 Lambda — wake<br/>Start EC2 instance"]
+    D["🔵 Lambda — status<br/>Check EC2 state"]
+    F["💗 Lambda — reaper<br/>Stop idle EC2 (EventBridge 1m)"]
+  end
+
+  %% === Infrastructure Section ===
+  subgraph Infra["🖥️ Infrastructure Layer"]
+    E["🟨 EC2 Instance<br/>Amazon Linux 2023<br/>Web Application"]
+    G["🟨 CloudWatch Dashboards<br/>Metrics & Alarms"]
+    H["🟨 SNS Notifications<br/>Email Alerts"]
+  end
+
+  %% === Connections ===
+  A -->|POST /wake| B
   A -->|GET /status| B
 
-  B --> C["🟢 Lambda — wake<br/>Start EC2 instance"]
-  B --> D["🔵 Lambda — status<br/>Check EC2 state"]
+  B --> C
+  B --> D
 
-  C --> E["🖥️ EC2 Instance<br/>Amazon Linux 2023"]
+  C --> E
   D --> E
 
-  F["💗 Lambda — reaper<br/>Stop idle EC2 (EventBridge 1m)"] --> E
-  E --> G["📊 CloudWatch Dashboards<br/>Metrics & Alarms"]
-  G --> H["✉️ SNS Notifications<br/>Email alerts"]
+  F --> E
+  E --> G
+  G --> H
 ```
 
 ---
