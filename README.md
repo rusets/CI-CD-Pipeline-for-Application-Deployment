@@ -204,9 +204,10 @@ ci-cd-pipeline-aws/
 - **Visual dashboards:** live metrics and timeline of wake/sleep events.  
 - **Portfolio-ready:** clean architecture, full automation, real custom domains.
 
+---
+
 ## 🖼️ Screenshots — System in Action
 
----
 
 ### 1️⃣ Wait Page — Before Wake-Up  
 Shows the static landing page hosted on **S3 + CloudFront**, waiting for user interaction.  
