@@ -85,3 +85,61 @@ resource "aws_iam_role_policy" "lambda_inline" {
     )
   })
 }
+
+############################################
+# GitHub OIDC role — allow Lambda CRUD for ruslan-aws-<env>-*
+############################################
+
+# Имя роли GitHub OIDC; при необходимости поменяй
+locals {
+  gh_oidc_role_name    = "github-actions-ci-cd-pipeline-aws"
+  lambda_prefix_arn    = "arn:aws:lambda:${var.region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-${var.environment}-*"
+  lambda_exec_role_arn = aws_iam_role.lambda_role.arn
+}
+
+data "aws_iam_role" "gh_oidc_role" {
+  name = local.gh_oidc_role_name
+}
+
+data "aws_iam_policy_document" "gh_lambda_admin" {
+  statement {
+    sid    = "LambdaCRUDLimitedToPrefix"
+    effect = "Allow"
+    actions = [
+      "lambda:CreateFunction",
+      "lambda:GetFunction",
+      "lambda:GetFunctionConfiguration",
+      "lambda:UpdateFunctionCode",
+      "lambda:UpdateFunctionConfiguration",
+      "lambda:PublishVersion",
+      "lambda:CreateAlias",
+      "lambda:UpdateAlias",
+      "lambda:DeleteAlias",
+      "lambda:DeleteFunction",
+      "lambda:ListVersionsByFunction",
+      "lambda:TagResource",
+      "lambda:UntagResource",
+      "lambda:ListTags",
+      "lambda:AddPermission",
+      "lambda:RemovePermission"
+    ]
+    resources = [local.lambda_prefix_arn]
+  }
+
+  statement {
+    sid       = "PassExecutionRoleToLambda"
+    effect    = "Allow"
+    actions   = ["iam:PassRole"]
+    resources = [local.lambda_exec_role_arn]
+  }
+}
+
+resource "aws_iam_policy" "gh_lambda_admin" {
+  name   = "${var.project_name}-${var.environment}-gh-lambda-admin"
+  policy = data.aws_iam_policy_document.gh_lambda_admin.json
+}
+
+resource "aws_iam_role_policy_attachment" "gh_attach_lambda_admin" {
+  role       = data.aws_iam_role.gh_oidc_role.name
+  policy_arn = aws_iam_policy.gh_lambda_admin.arn
+}
