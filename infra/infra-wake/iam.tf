@@ -16,16 +16,14 @@ resource "aws_iam_role" "lambda_role" {
 }
 
 locals {
-  instance_arn  = var.instance_id != "" ? "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:instance/${var.instance_id}" : null
-  ssm_param_arn = "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_param_last_wake}"
-
+  instance_arn           = var.instance_id != "" ? "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:instance/${var.instance_id}" : null
+  ssm_param_arn          = "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_param_last_wake}"
   gh_oidc_role_name      = "github-actions-ci-cd-pipeline-aws"
   lambda_fn_prefix_arn   = "arn:aws:lambda:${var.region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-${var.environment}-*"
   logs_group_prefix_arn  = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-${var.environment}-*"
   logs_stream_prefix_arn = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-${var.environment}-*:*"
   events_rule_prefix_arn = "arn:aws:events:${var.region}:${data.aws_caller_identity.current.account_id}:rule/${var.project_name}-${var.environment}-*"
-
-  lambda_exec_role_arn = aws_iam_role.lambda_role.arn
+  lambda_exec_role_arn   = aws_iam_role.lambda_role.arn
 }
 
 resource "aws_iam_role_policy" "lambda_inline" {
@@ -104,28 +102,25 @@ data "aws_iam_policy_document" "gh_lambda_admin_all" {
       "lambda:DeleteFunction",
       "lambda:GetFunction",
       "lambda:GetFunctionConfiguration",
+      "lambda:GetPolicy",
+      "lambda:GetFunctionCodeSigningConfig",
+      "lambda:PutFunctionCodeSigningConfig",
+      "lambda:DeleteFunctionCodeSigningConfig",
       "lambda:ListVersionsByFunction",
       "lambda:TagResource",
       "lambda:UntagResource",
       "lambda:ListTags",
       "lambda:AddPermission",
-      "lambda:RemovePermission",
-      "lambda:GetPolicy",
-
-      "lambda:GetFunctionCodeSigningConfig",
-      "lambda:PutFunctionCodeSigningConfig",
-      "lambda:DeleteFunctionCodeSigningConfig"
+      "lambda:RemovePermission"
     ]
     resources = [local.lambda_fn_prefix_arn]
   }
 
   statement {
-    sid     = "LambdaGetFunctionAnyByName"
-    effect  = "Allow"
-    actions = ["lambda:GetFunction"]
-    resources = [
-      "arn:aws:lambda:${var.region}:${data.aws_caller_identity.current.account_id}:function:*"
-    ]
+    sid       = "LambdaGetFunctionAnyByName"
+    effect    = "Allow"
+    actions   = ["lambda:GetFunction"]
+    resources = ["arn:aws:lambda:${var.region}:${data.aws_caller_identity.current.account_id}:function:*"]
   }
 
   statement {
@@ -173,6 +168,11 @@ data "aws_iam_policy_document" "gh_lambda_admin_all" {
 resource "aws_iam_policy" "gh_lambda_admin_all" {
   name   = "${var.project_name}-${var.environment}-gh-lambda-admin"
   policy = data.aws_iam_policy_document.gh_lambda_admin_all.json
+
+  lifecycle {
+    ignore_changes  = [policy]
+    prevent_destroy = true
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "gh_attach_lambda_admin_all" {
