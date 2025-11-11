@@ -34,6 +34,7 @@ env:
   TF_VAR_ssm_param_last_wake: /ci-wake/last_wake
   TF_VAR_instance_tag_key: Name
   TF_VAR_instance_tag_value: ruslan-aws-dev
+  TF_VAR_idle_minutes: "5"
 
 jobs:
   terraform:
