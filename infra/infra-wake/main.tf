@@ -1,3 +1,6 @@
+############################################
+# Locals — project paths and name prefix
+############################################
 locals {
   name_prefix  = "${var.project_name}-${var.environment}"
   project_root = abspath("${path.module}/../..")
@@ -6,6 +9,9 @@ locals {
   stage_root   = "${local.build_root}/stage"
 }
 
+############################################
+# Data — discover EC2 instance by tag
+############################################
 data "aws_instances" "by_tag" {
   filter {
     name   = "tag:${var.instance_tag_key}"
@@ -14,6 +20,9 @@ data "aws_instances" "by_tag" {
   instance_state_names = ["pending", "running", "stopping", "stopped"]
 }
 
+############################################
+# Locals — select EC2 instance ID (direct or discovered)
+############################################
 locals {
   instance_id_effective = coalesce(
     var.instance_id,
@@ -21,12 +30,18 @@ locals {
   )
 }
 
+############################################
+# Build — prepare directories for Lambda packages
+############################################
 resource "null_resource" "prepare_build" {
   provisioner "local-exec" {
     command = "mkdir -p ${local.build_root} ${local.stage_root}/status ${local.stage_root}/reaper"
   }
 }
 
+############################################
+# Lambda — wake function (Node.js)
+############################################
 data "archive_file" "wake_zip" {
   type        = "zip"
   source_dir  = "${local.lambdas_root}/wake"
@@ -53,6 +68,9 @@ resource "aws_lambda_function" "wake" {
   depends_on = [aws_iam_role_policy_attachment.gh_attach_lambda_admin_all]
 }
 
+############################################
+# Stage — sync code for status Lambda
+############################################
 resource "null_resource" "stage_status" {
   provisioner "local-exec" {
     command = <<-SH
@@ -64,6 +82,9 @@ resource "null_resource" "stage_status" {
   depends_on = [null_resource.prepare_build]
 }
 
+############################################
+# Lambda — status function (Python)
+############################################
 data "archive_file" "status_zip" {
   type        = "zip"
   source_dir  = "${local.stage_root}/status"
@@ -89,6 +110,9 @@ resource "aws_lambda_function" "status" {
   depends_on = [aws_iam_role_policy_attachment.gh_attach_lambda_admin_all]
 }
 
+############################################
+# Stage — sync code for reaper Lambda
+############################################
 resource "null_resource" "stage_reaper" {
   provisioner "local-exec" {
     command = <<-SH
@@ -100,6 +124,9 @@ resource "null_resource" "stage_reaper" {
   depends_on = [null_resource.prepare_build]
 }
 
+############################################
+# Lambda — reaper function (Python)
+############################################
 data "archive_file" "reaper_zip" {
   type        = "zip"
   source_dir  = "${local.stage_root}/reaper"
