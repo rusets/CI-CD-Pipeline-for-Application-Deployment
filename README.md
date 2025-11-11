@@ -242,3 +242,11 @@ Live metrics showing EC2 CPU.
 ### 6️⃣ SNS Email Alert  
 Example of a real **CloudWatch → SNS** notification delivered to email when an alarm triggers.  
 ![SNS Alert Email](docs/screenshots/6-sns-alert-email.png)
+
+---
+
+## 🧾 License
+
+Released under the **MIT License** — feel free to use, fork, and learn from it.  
+© Ruslan Dashkin (🚀Ruslan AWS)
+Branding name “🚀Ruslan AWS” and related visuals are protected; commercial reuse or rebranding without permission is prohibited.

@@ -77,3 +77,7 @@ cloudwatch/amazon-cloudwatch-agent.json
 tf-allow.json
 tf-config.json.terraform.lock.hcl
 terraform.tfvars
+
+**/.terraform.lock.hcl
+
+**/.terraform.lock.hcl
