@@ -1,5 +1,10 @@
+############################################
+# IAM — Lambda trust, Lambda exec role, inline EC2/SSM/logs, and GitHub OIDC admin
+############################################
+
 data "aws_caller_identity" "current" {}
 
+# Trust policy for Lambda
 data "aws_iam_policy_document" "assume_lambda" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -10,22 +15,32 @@ data "aws_iam_policy_document" "assume_lambda" {
   }
 }
 
+# Execution role for wake/status/reaper Lambdas
 resource "aws_iam_role" "lambda_role" {
   name               = "${var.project_name}-${var.environment}-wake-sleep-role"
   assume_role_policy = data.aws_iam_policy_document.assume_lambda.json
 }
 
+# Common ARNs and names
 locals {
-  instance_arn           = var.instance_id != "" ? "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:instance/${var.instance_id}" : null
-  ssm_param_arn          = "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_param_last_wake}"
-  gh_oidc_role_name      = "github-actions-ci-cd-pipeline-aws"
+  instance_arn  = var.instance_id != "" ? "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:instance/${var.instance_id}" : null
+  ssm_param_arn = "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_param_last_wake}"
+
+  gh_oidc_role_name = "github-actions-ci-cd-pipeline-aws"
+
   lambda_fn_prefix_arn   = "arn:aws:lambda:${var.region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-${var.environment}-*"
   logs_group_prefix_arn  = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-${var.environment}-*"
   logs_stream_prefix_arn = "arn:aws:logs:${var.region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-${var.environment}-*:*"
   events_rule_prefix_arn = "arn:aws:events:${var.region}:${data.aws_caller_identity.current.account_id}:rule/${var.project_name}-${var.environment}-*"
-  lambda_exec_role_arn   = aws_iam_role.lambda_role.arn
+
+  lambda_exec_role_arn = aws_iam_role.lambda_role.arn
 }
 
+# Inline policy for Lambda execution role:
+# - Start/Stop EC2 by ID OR by Tag
+# - Describe EC2
+# - Get/Put exact SSM parameter
+# - Basic CloudWatch Logs
 resource "aws_iam_role_policy" "lambda_inline" {
   name = "${var.project_name}-${var.environment}-inline"
   role = aws_iam_role.lambda_role.id
@@ -73,8 +88,8 @@ resource "aws_iam_role_policy" "lambda_inline" {
           Action = [
             "logs:CreateLogGroup",
             "logs:CreateLogStream",
-            "logs:PutLogEvents",
-            "logs:DescribeLogStreams"
+            "logs:DescribeLogStreams",
+            "logs:PutLogEvents"
           ]
           Resource = "*"
         }
@@ -83,54 +98,42 @@ resource "aws_iam_role_policy" "lambda_inline" {
   })
 }
 
+############################################
+# GitHub OIDC role — wide Lambda admin for your prefix + read-any
+############################################
+
 data "aws_iam_role" "gh_oidc_role" {
   name = local.gh_oidc_role_name
 }
 
+# Broad but scoped policy so Terraform in GitHub Actions stops hitting 403s
 data "aws_iam_policy_document" "gh_lambda_admin_all" {
+  # Full Lambda CRUD on functions with your prefix (ruslan-aws-<env>-*)
   statement {
-    sid    = "LambdaCrudScopedToPrefix"
-    effect = "Allow"
-    actions = [
-      "lambda:CreateFunction",
-      "lambda:UpdateFunctionCode",
-      "lambda:UpdateFunctionConfiguration",
-      "lambda:PublishVersion",
-      "lambda:CreateAlias",
-      "lambda:UpdateAlias",
-      "lambda:DeleteAlias",
-      "lambda:DeleteFunction",
-      "lambda:GetFunction",
-      "lambda:GetFunctionConfiguration",
-      "lambda:GetPolicy",
-      "lambda:GetFunctionCodeSigningConfig",
-      "lambda:PutFunctionCodeSigningConfig",
-      "lambda:DeleteFunctionCodeSigningConfig",
-      "lambda:ListVersionsByFunction",
-      "lambda:TagResource",
-      "lambda:UntagResource",
-      "lambda:ListTags",
-      "lambda:AddPermission",
-      "lambda:RemovePermission"
-    ]
+    sid       = "LambdaCrudOnPrefixedFunctions"
+    effect    = "Allow"
+    actions   = ["lambda:*"]
     resources = [local.lambda_fn_prefix_arn]
   }
 
+  # Read/list ANY Lambda metadata (provider does wide reads incl. code-signing config)
   statement {
-    sid       = "LambdaGetFunctionAnyByName"
+    sid       = "LambdaReadAny"
     effect    = "Allow"
-    actions   = ["lambda:GetFunction"]
-    resources = ["arn:aws:lambda:${var.region}:${data.aws_caller_identity.current.account_id}:function:*"]
+    actions   = ["lambda:Get*", "lambda:List*"]
+    resources = ["*"]
   }
 
+  # CloudWatch Logs for your Lambda prefix
   statement {
     sid    = "LogsForLambdaPrefix"
     effect = "Allow"
     actions = [
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
-      "logs:PutLogEvents",
-      "logs:DescribeLogStreams"
+      "logs:DescribeLogStreams",
+      "logs:DescribeLogGroups",
+      "logs:PutLogEvents"
     ]
     resources = [
       local.logs_group_prefix_arn,
@@ -138,6 +141,7 @@ data "aws_iam_policy_document" "gh_lambda_admin_all" {
     ]
   }
 
+  # EventBridge rules/targets for reaper scheduler with your prefix
   statement {
     sid    = "EventsForReaperPrefix"
     effect = "Allow"
@@ -152,6 +156,7 @@ data "aws_iam_policy_document" "gh_lambda_admin_all" {
     resources = [local.events_rule_prefix_arn]
   }
 
+  # Allow passing the Lambda execution role
   statement {
     sid       = "PassExecRoleToLambda"
     effect    = "Allow"
@@ -169,6 +174,7 @@ resource "aws_iam_policy" "gh_lambda_admin_all" {
   name   = "${var.project_name}-${var.environment}-gh-lambda-admin"
   policy = data.aws_iam_policy_document.gh_lambda_admin_all.json
 
+  # Avoid needing iam:CreatePolicyVersion on updates from CI: keep the first version
   lifecycle {
     ignore_changes  = [policy]
     prevent_destroy = true
