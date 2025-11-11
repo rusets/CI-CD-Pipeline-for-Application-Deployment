@@ -44,7 +44,7 @@ flowchart TD
   Lwake --> EC2[EC2 Instance Amazon Linux 2023]
   Lstatus --> EC2
 
-  Lreaper[Lambda reaper EventBridge 1m] --> EC2
+  Reaper[Lambda reaper EventBridge 1m] --> EC2
   EC2 --> Dash[CloudWatch Dashboards and Alarms]
   Dash --> SNS[SNS Email Notifications]
   end
