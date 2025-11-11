@@ -6,13 +6,6 @@
 ![Domain](https://img.shields.io/badge/Domain-app.ci--wake.online-blue)
 ![Status](https://img.shields.io/badge/State-Auto%20Wake%2FSleep-green)
 
----
-
-## 🌐 Live Demo
-
-🔹 **Wait Page:** [https://app.ci-wake.online](https://app.ci-wake.online)  
-When you click **“Wake Up”**, the EC2 instance powers on automatically and the site becomes available.  
-After **5 minutes of inactivity**, it shuts down to save cost — all managed automatically by Lambda and CloudWatch.
 
 ---
 
@@ -27,6 +20,15 @@ This project is a **fully automated infrastructure pipeline** for deploying and 
 - **Monitoring and alerts** — via CloudWatch and SNS  
 
 It demonstrates how to build a **production-grade CI/CD environment** that stays cost-efficient while showcasing real AWS automation.
+
+---
+
+
+## 🌐 Live Demo
+
+🔹 **Wait Page:** [https://app.ci-wake.online](https://app.ci-wake.online)  
+When you click **“Wake Up”**, the EC2 instance powers on automatically and the site becomes available.  
+After **5 minutes of inactivity**, it shuts down to save cost — all managed automatically by Lambda and CloudWatch.
 
 ---
 
@@ -142,14 +144,6 @@ sudo stress-ng --cpu 4 --timeout 120
 
 ---
 
-## 🧭 Domain & Certificates
-
-| Component | Domain | Certificate ARN |
-|------------|---------|----------------|
-| 🌐 Wait Site | [app.ci-wake.online](https://app.ci-wake.online) | `arn:aws:acm:us-east-1:097635932419:certificate/0d400c46-2086-41b1-b6c2-74112715701a` |
-| ⚙️ API Gateway | api.ci-wake.online | Same ACM (validated via Route53 + Namecheap) |
-
----
 
 ## 🧾 Folder Structure
 
