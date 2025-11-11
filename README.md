@@ -38,25 +38,25 @@ flowchart TD
     U[User / Browser]
   end
 
-  subgraph Frontend["Wait Page (S3 + CloudFront)"]
+  subgraph Frontend["Wait Page — S3 + CloudFront"]
     W[Wait Page: app.ci-wake.online]
   end
 
-  subgraph API["API Gateway (HTTP)"]
+  subgraph API["API Gateway — HTTP Endpoints"]
     API1[Route: POST /wake]
     API2[Route: GET /status]
   end
 
   subgraph Lambda["Serverless Control Plane"]
-    Lwake[Lambda: wake]
-    Lstatus[Lambda: status]
-    Lreaper[Lambda: reaper (EventBridge every 5 min)]
+    Lwake[Lambda — wake]
+    Lstatus[Lambda — status]
+    Lreaper[Lambda — reaper via EventBridge every 5 min]
   end
 
-  subgraph Infra["AWS Infrastructure (EC2 + Monitoring)"]
-    EC2[EC2 Instance: Amazon Linux 2023]
+  subgraph Infra["AWS Infrastructure — EC2 & Monitoring"]
+    EC2[EC2 Instance — Amazon Linux 2023]
     CW[CloudWatch Dashboards & Alarms]
-    SNS[SNS Email Notification]
+    SNS[SNS Email Notifications]
   end
 
   %% Connections
