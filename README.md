@@ -18,136 +18,129 @@ After **5 minutes of inactivity**, it shuts down to save cost — all managed au
 
 ## 🧠 Project Overview
 
-This project is a **fully automated infrastructure pipeline** for deploying and managing a web application on AWS using:
-- **Terraform** — full Infrastructure as Code  
-- **GitHub Actions (OIDC)** — CI/CD automation  
-- **Serverless control plane** — Lambda functions for wake/sleep logic  
-- **Auto-wake page** — hosted on S3 + CloudFront with custom domain  
-- **Monitoring and alerts** — via CloudWatch and SNS  
+This project represents a **fully automated production-grade DevOps pipeline**, designed to deploy, monitor, and scale a cloud web application using **Terraform**, **AWS**, and **GitHub Actions (OIDC)** — without any manual AWS Console operations.
 
-It demonstrates how to build a **production-grade CI/CD environment** that stays cost-efficient while showcasing real AWS automation.
+It demonstrates how to integrate Infrastructure-as-Code, CI/CD automation, event-driven Lambda control, cost management, and full observability into a cohesive, self-healing infrastructure.
 
 ---
 
 ## ⚙️ Architecture
 
 ```mermaid
-flowchart LR
-  %% === Frontend Section ===
-  subgraph Frontend["🌐 Frontend Layer"]
-    A["🟨 CloudFront + S3<br/>Wait Page (app.ci-wake.online)"]
-  end
+flowchart TD
+    subgraph "S3 + CloudFront (Wait Page)"
+        U["User / Browser"] -->|Click Wake Up| W["Wait Page (app.ci-wake.online)"]
+    end
 
-  %% === API Section ===
-  subgraph API["⚙️ API Gateway Layer"]
-    B["🟨 API Gateway (HTTP)<br/>Trigger Lambda functions"]
-  end
+    W -->|POST /wake| API["API Gateway (HTTP)"]
+    W -->|GET /status| API
 
-  %% === Lambda Control Plane ===
-  subgraph Lambdas["☁️ Serverless Control Plane"]
-    C["🟢 Lambda — wake<br/>Start EC2 instance"]
-    D["🔵 Lambda — status<br/>Check EC2 state"]
-    F["💗 Lambda — reaper<br/>Stop idle EC2 (EventBridge 1m)"]
-  end
+    API --> Lwake["Lambda (wake)"]
+    API --> Lstatus["Lambda (status)"]
 
-  %% === Infrastructure Section ===
-  subgraph Infra["🖥️ Infrastructure Layer"]
-    E["🟨 EC2 Instance<br/>Amazon Linux 2023<br/>Web Application"]
-    G["🟨 CloudWatch Dashboards<br/>Metrics & Alarms"]
-    H["🟨 SNS Notifications<br/>Email Alerts"]
-  end
+    Lwake --> EC2["EC2 Instance (Amazon Linux 2023 + Apache)"]
+    Lstatus --> EC2
 
-  %% === Connections ===
-  A -->|POST /wake| B
-  A -->|GET /status| B
-
-  B --> C
-  B --> D
-
-  C --> E
-  D --> E
-
-  F --> E
-  E --> G
-  G --> H
+    subgraph "CloudWatch + EventBridge"
+        Lreaper["Lambda (reaper, triggered every 1m)"] --> EC2
+        EC2 --> Dash["CloudWatch Dashboards + Alarms"]
+        Dash --> SNS["SNS Email Notifications"]
+    end
 ```
 
 ---
 
-## 🧩 Components
+## 🧩 AWS Services Used
 
-### 🌩️ Infrastructure (Terraform)
-- **S3 backend + DynamoDB** — for Terraform state locking  
-- **EC2 instance** — Amazon Linux 2023 with Apache + auto-deploy site.zip  
-- **IAM roles** — CloudWatch Agent & Lambda policies  
-- **Lambda functions**
-  - `wake`: starts the EC2 instance
-  - `status`: checks EC2 state and public IP
-  - `reaper`: auto-stops instance after idle period  
-- **EventBridge rule** — triggers `reaper` every minute  
-- **CloudWatch dashboard** — metrics for CPU, status checks, Lambda invocations  
-- **SNS alerts** — email when CPU > 70% or EC2 fails health check  
+| Service | Purpose | Description |
+|----------|----------|-------------|
+| **EC2 (Elastic Compute Cloud)** | Compute | Runs the demo web app (Apache + static build). Configured via user data and auto-managed lifecycle (wake/sleep). |
+| **Lambda** | Serverless compute | 3 functions handle automation:<br>• `wake` — starts EC2 instance.<br>• `status` — returns instance state.<br>• `reaper` — stops instance when idle. |
+| **API Gateway (HTTP)** | Entry point | Provides REST endpoints `/wake` and `/status` for front-end to interact with Lambdas. |
+| **S3 + CloudFront** | Static hosting + CDN | Hosts the “Wait Page” (`https://app.ci-wake.online`) with global low-latency distribution and HTTPS certificate. |
+| **EventBridge** | Automation scheduler | Triggers `reaper` Lambda every minute to check EC2 idle state. |
+| **SSM Parameter Store** | State persistence | Stores timestamp of last wake event (`/ci-wake/last_wake`). |
+| **CloudWatch** | Monitoring | Dashboards visualize EC2 CPU, memory, Lambda invocations, and alarms for system health. |
+| **SNS (Simple Notification Service)** | Alerts | Sends email when alarms are triggered (e.g., CPU > 70% or EC2 health check failure). |
+| **IAM (Identity & Access Management)** | Access control | Fine-grained roles for GitHub OIDC, Lambda execution, and CloudWatch agent. |
+| **GitHub Actions (OIDC)** | CI/CD pipeline | Authenticates directly with AWS (no long-term keys), runs Terraform apply/destroy automatically on workflow triggers. |
+| **Terraform** | Infrastructure as Code | Manages the entire stack lifecycle — from IAM and EC2 to DNS and monitoring. |
+| **ACM (AWS Certificate Manager)** | SSL/TLS | Provides HTTPS for both API and static site via validated wildcard certificate. |
+| **Route 53** | DNS management | Integrates custom domain `ci-wake.online` and subdomains (`app.` and `api.`). |
 
 ---
 
 ## 🚀 CI/CD Workflow (GitHub Actions)
 
-- **OIDC authentication** (no access keys)
-- **Terraform plan/apply/destroy** pipeline  
-- Triggered manually or on commit in `infra/**`  
-- Uses concurrency groups to prevent race conditions  
+The pipeline is split into **two workflows**:
+
+### 🧱 1. `terraform.yml` — Infrastructure Provisioning
+- Deploys VPC, EC2, IAM, CloudWatch, and SNS components.  
+- Handles backend configuration (S3 + DynamoDB).  
+- Runs via GitHub OIDC with temporary AWS credentials.  
+- Enforces concurrency groups to prevent parallel conflicts.  
+
+### ⚡ 2. `infra-wake.yml` — Lambda Deployment
+- Builds and deploys Lambda ZIPs (`wake`, `status`, `reaper`).  
+- Automatically detects EC2 instance by tag (`Name=ruslan-aws-dev`).  
+- Updates code only when changes are detected.  
 
 ---
 
 ## 💰 Cost Optimization
 
 | Mechanism | Description |
-|------------|--------------|
-| 💤 **Auto Sleep** | EC2 automatically stops after 5 minutes of inactivity |
-| ⚡ **Wake on Demand** | EC2 starts only when user clicks “Wake Up” |
-| ☁️ **S3 + CloudFront** | Wait site is fully static (Always-Free) |
-| 🧠 **Serverless Control Plane** | Lambdas only run for milliseconds per event |
-| 💾 **State backend** | Terraform state stored in low-cost S3/DynamoDB |
+|------------|-------------|
+| 💤 **Auto Sleep (Lambda + EventBridge)** | The `reaper` Lambda stops the EC2 instance automatically after a defined idle period (default: 5 min). |
+| ⚡ **Wake on Demand** | The instance is started only when a user clicks the “Wake Up” button — triggered via API Gateway. |
+| ☁️ **Serverless Control Plane** | Lambdas run for only a few milliseconds per request; no idle cost. |
+| 💾 **State stored in SSM** | No database overhead — uses free-tier Parameter Store for timestamps. |
+| 🧠 **S3 + CloudFront Always-Free Tier** | The wait site costs $0 due to S3’s and CloudFront’s free allowances. |
+| 📉 **CloudWatch Custom Metrics** | Optimized to minimal retention; no extra charges for unused metrics. |
+| 💸 **Terraform Lifecycle Policies** | Workflows automatically destroy test environments after idle periods to save cost. |
+
+Typical monthly cost: **< $1 under AWS Free Tier** during normal operation.
 
 ---
 
-## 📊 Monitoring
+## 📊 Monitoring and Observability
 
-CloudWatch Dashboard includes:
-- **EC2 metrics** — CPU Utilization, Status Checks  
-- **Lambda Invocations / Errors** — wake, status, reaper  
-- **CWAgent** — memory and disk usage  
-- **SNS Alerts** — via email
+**CloudWatch Dashboards** provide full visibility into system health:  
+- **EC2 Metrics:** CPU Utilization, Network In/Out, Status Checks  
+- **Lambda Metrics:** Invocations, Duration, Errors, Throttles  
+- **CloudWatch Agent:** Memory, Disk usage, uptime  
+- **SNS Alerts:** email notifications when alarms trigger  
 
-### 🖥️ View in AWS Console
-Go to **CloudWatch → Dashboards → ruslan-aws-dev-overview**
+🖥️ View in AWS Console → **CloudWatch → Dashboards → ruslan-aws-dev-overview**
 
 ---
 
-## 🧪 Simulate Load (Trigger CloudWatch Alarm)
+## 🧪 Load Simulation (Trigger Alarm Manually)
 
-To trigger the **CPU Utilization > 70%** alert on the EC2 instance, run this inside the EC2 terminal:
+Use SSH or SSM Session Manager to connect to EC2 and run:
 
 ```bash
 sudo yum install -y stress
 stress --cpu 4 --timeout 120
 ```
 
-Or with Amazon Linux 2023:
+Or on Amazon Linux 2023:
 
 ```bash
 sudo dnf install -y stress-ng
 sudo stress-ng --cpu 4 --timeout 120
 ```
 
+This artificially raises CPU utilization, activating the SNS alert and CloudWatch alarm (ALARM state).
+
 ---
 
-## 🧭 Domain & Certificates
+## 🧭 Domain and Certificates
 
 | Component | Domain | Certificate ARN |
 |------------|---------|----------------|
 | 🌐 Wait Site | [app.ci-wake.online](https://app.ci-wake.online) | `arn:aws:acm:us-east-1:097635932419:certificate/0d400c46-2086-41b1-b6c2-74112715701a` |
-| ⚙️ API Gateway | api.ci-wake.online | Same ACM (validated via Route53 + Namecheap) |
+| ⚙️ API Gateway | api.ci-wake.online | Same ACM, validated via Route 53 + Namecheap |
 
 ---
 
@@ -155,13 +148,18 @@ sudo stress-ng --cpu 4 --timeout 120
 
 ```
 ci-cd-pipeline-aws/
-├── app/
+├── app/                        # Web app source
 │   └── public/
 │       ├── index.html
 │       └── assets/
 │           ├── css/
 │           └── js/
-├── infra/
+├── wait-site/                  # Static "Wake Page" (S3 + CloudFront)
+│   ├── index.html
+│   └── assets/
+│       ├── css/
+│       └── js/
+├── infra/                      # Terraform Infrastructure
 │   ├── main.tf
 │   ├── variables.tf
 │   ├── providers.tf
@@ -180,17 +178,12 @@ ci-cd-pipeline-aws/
 │       ├── outputs.tf
 │       ├── backend.tf
 │       └── versions.tf
-├── lambdas/
-│   ├── wake/    └── index.js
-│   ├── status/  └── index.py
-│   ├── reaper/  └── index.py
-│   └── _common/ └── timeparse.py
-├── wait-site/
-│   ├── index.html
-│   └── assets/
-│       ├── css/
-│       └── js/
-├── scripts/
+├── lambdas/                    # Serverless functions
+│   ├── wake/index.js
+│   ├── status/index.py
+│   ├── reaper/index.py
+│   └── _common/timeparse.py
+├── scripts/                    # Bootstrap scripts for EC2
 │   ├── deploy_on_instance.sh
 │   └── app.service
 ├── cloudwatch/
@@ -204,8 +197,26 @@ ci-cd-pipeline-aws/
 ---
 
 ## 🧠 Key Highlights
-- **Zero manual intervention:** Terraform handles all provisioning.  
-- **GitHub → AWS via OIDC:** no secrets in the repo.  
-- **Real cost control:** EC2 sleeps automatically after idle.  
-- **Visual dashboards:** live metrics and timeline of wake/sleep events.  
-- **Portfolio-ready:** clean architecture, full automation, real custom domains.
+
+- **End-to-End Automation:** Every AWS resource is provisioned via Terraform and deployed through GitHub Actions.  
+- **No Secrets:** Secure authentication using OpenID Connect (OIDC).  
+- **Event-Driven Cloud:** Lambda and EventBridge manage compute lifecycle automatically.  
+- **Cost-Aware Infrastructure:** Pay-only-when-active model.  
+- **Observability-First Design:** Built-in CloudWatch dashboards and alarms.  
+- **Portfolio-Ready:** Real AWS automation, clean IaC structure, and production-style domains.
+
+---
+
+## 📸 Proof of Work — Live AWS Environment
+
+| Screenshot | Description |
+|-------------|-------------|
+| ![Wait Page](docs/screenshots/wait-page.png) | **Wait Page:** before wake-up — static S3 + CloudFront site |
+| ![App Running](docs/screenshots/app-running.png) | **Application Online:** EC2 powered up and serving web app |
+| ![GitHub Actions Terraform](docs/screenshots/github-actions-terraform.png) | **GitHub Actions (terraform.yml):** full IaC deployment via OIDC |
+| ![GitHub Actions Wake](docs/screenshots/github-actions-wake.png) | **GitHub Actions (infra-wake.yml):** Lambda-based wake workflow |
+| ![CloudWatch Dashboard](docs/screenshots/cloudwatch-dashboard.png) | **CloudWatch Dashboard:** EC2 & Lambda metrics visualized |
+| ![SNS Email](docs/screenshots/sns-email.png) | **SNS Notification:** automated alert confirming full pipeline cycle |
+
+_All resources deployed and managed end-to-end through Terraform + GitHub Actions (OIDC)._
+
