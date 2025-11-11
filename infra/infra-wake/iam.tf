@@ -19,14 +19,51 @@ resource "aws_iam_role" "lambda_role" {
 }
 
 ############################################
-# Locals — ARNs & conditions
+# Locals — ARNs & conditional statements
 ############################################
 locals {
-  # instance ARN only if instance_id provided; otherwise null
-  instance_arn = var.instance_id != "" ? "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:instance/${var.instance_id}" : null
-
-  # exact SSM parameter ARN (e.g. /ci-wake/last_wake)
+  instance_arn  = var.instance_id != "" ? "arn:aws:ec2:${var.region}:${data.aws_caller_identity.current.account_id}:instance/${var.instance_id}" : null
   ssm_param_arn = "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter${var.ssm_param_last_wake}"
+
+  stmt_by_id = var.instance_id != "" ? [
+    {
+      Sid      = "EC2StartStopById"
+      Effect   = "Allow"
+      Action   = ["ec2:StartInstances", "ec2:StopInstances"]
+      Resource = local.instance_arn
+    }
+  ] : []
+
+  stmt_by_tag = var.instance_id == "" ? [
+    {
+      Sid      = "EC2StartStopByTag"
+      Effect   = "Allow"
+      Action   = ["ec2:StartInstances", "ec2:StopInstances"]
+      Resource = "*"
+      Condition = {
+        StringEquals = {
+          "ec2:ResourceTag/${var.instance_tag_key}" = var.instance_tag_value
+        }
+      }
+    }
+  ] : []
+
+  stmt_common = [
+    {
+      Sid      = "EC2DescribeAll"
+      Effect   = "Allow"
+      Action   = ["ec2:DescribeInstances", "ec2:DescribeInstanceStatus"]
+      Resource = "*"
+    },
+    {
+      Sid      = "SSMParamGetPutExact"
+      Effect   = "Allow"
+      Action   = ["ssm:GetParameter", "ssm:PutParameter"]
+      Resource = local.ssm_param_arn
+    }
+  ]
+
+  all_statements = concat(local.stmt_by_id, local.stmt_by_tag, local.stmt_common)
 }
 
 ############################################
@@ -35,47 +72,9 @@ locals {
 resource "aws_iam_role_policy" "lambda_inline" {
   name = "${var.project_name}-${var.environment}-inline"
   role = aws_iam_role.lambda_role.id
-
   policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = compact([
-      # If instance_id is known — allow start/stop that exact instance
-      var.instance_id != "" ? {
-        Sid      = "EC2StartStopById"
-        Effect   = "Allow"
-        Action   = ["ec2:StartInstances", "ec2:StopInstances"]
-        Resource = local.instance_arn
-      } : null,
-
-      # If instance_id is NOT known — allow start/stop only for instances with specific tag
-      var.instance_id == "" ? {
-        Sid      = "EC2StartStopByTag"
-        Effect   = "Allow"
-        Action   = ["ec2:StartInstances", "ec2:StopInstances"]
-        Resource = "*"
-        Condition = {
-          StringEquals = {
-            "ec2:ResourceTag/${var.instance_tag_key}" = var.instance_tag_value
-          }
-        }
-      } : null,
-
-      # Describe is needed broadly so the lambdas can read state
-      {
-        Sid      = "EC2DescribeAll"
-        Effect   = "Allow"
-        Action   = ["ec2:DescribeInstances", "ec2:DescribeInstanceStatus"]
-        Resource = "*"
-      },
-
-      # Exact SSM parameter (get/put last wake)
-      {
-        Sid      = "SSMParamGetPutExact"
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameter", "ssm:PutParameter"]
-        Resource = local.ssm_param_arn
-      }
-    ])
+    Version   = "2012-10-17"
+    Statement = local.all_statements
   })
 }
 
