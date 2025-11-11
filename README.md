@@ -233,7 +233,7 @@ Full Terraform CI/CD job applying infrastructure changes via **OIDC authenticati
 ---
 
 ### 5️⃣ CloudWatch Dashboard  
-Live metrics showing EC2 CPU, Lambda invocations, and system health — confirms successful automation.  
+Live metrics showing EC2 CPU.  
 ![CloudWatch Dashboard](docs/screenshots/5-cloudwatch-dashboard.png)
 
 ---
