@@ -29,17 +29,20 @@ Highlights:
 
 ```mermaid
 flowchart TD
-  U[User] --> W[Wait Page (S3 + CloudFront)]
-  W -->|POST /wake| API[API Gateway (HTTP)]
-  W -->|GET /status| API
-  API --> LW[Lambda: wake]
-  API --> LS[Lambda: status]
-  LW --> EC2[(EC2 Instance)]
-  LS --> EC2
-  EB[EventBridge rule (1m)] --> LR[Lambda: reaper]
-  LR --> EC2
-  EC2 --> CW[CloudWatch Dashboards & Alarms]
-  CW --> SNS[SNS Email]
+  U["User / Browser"] --> W["Wait Page - S3 & CloudFront"]
+
+  W -- "POST /wake" --> API["API Gateway (HTTP)"]
+  W -- "GET /status" --> API
+
+  API --> Lwake["Lambda: wake"]
+  API --> Lstatus["Lambda: status"]
+
+  Lwake --> EC2["EC2 Instance (Amazon Linux)"]
+  Lstatus --> EC2
+
+  R["Lambda: reaper (EventBridge schedule)"] --> EC2
+  EC2 --> CW["CloudWatch Dashboards & Alarms"]
+  CW --> SNS["SNS Email Notifications"]
 ```
 *(No ARNs exposed in the diagram. GitHub renders this Mermaid block correctly.)*
 
