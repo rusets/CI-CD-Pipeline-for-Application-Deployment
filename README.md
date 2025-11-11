@@ -155,22 +155,50 @@ sudo stress-ng --cpu 4 --timeout 120
 
 ```
 ci-cd-pipeline-aws/
-├── app/                    # deployed site files
-├── wait-site/              # CloudFront + S3 static wait page
-│   ├── index.html
-│   └── assets/js/app.js
+├── app/
+│   └── public/
+│       ├── index.html
+│       └── assets/
+│           ├── css/
+│           └── js/
 ├── infra/
-│   ├── main.tf             # EC2, SG, user_data
-│   ├── infra-wake/         # Lambdas wake/status/reaper
-│   ├── dashboard.tf        # CloudWatch Dashboards
-│   └── sns.tf              # SNS alerts
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── providers.tf
+│   ├── backend.tf
+│   ├── outputs.tf
+│   ├── alarms.tf
+│   ├── dashboard.tf
+│   ├── sns.tf
+│   ├── user_data.sh
+│   ├── user_data.tpl
+│   └── infra-wake/
+│       ├── main.tf
+│       ├── iam.tf
+│       ├── schedule.tf
+│       ├── variables.tf
+│       ├── outputs.tf
+│       ├── backend.tf
+│       └── versions.tf
 ├── lambdas/
-│   ├── wake/index.js
-│   ├── status/index.py
-│   └── reaper/index.py
-├── build/                  # ZIP artifacts for Lambda
-├── cloudwatch/             # CloudWatch agent config
-└── .github/workflows/terraform.yml
+│   ├── wake/    └── index.js
+│   ├── status/  └── index.py
+│   ├── reaper/  └── index.py
+│   └── _common/ └── timeparse.py
+├── wait-site/
+│   ├── index.html
+│   └── assets/
+│       ├── css/
+│       └── js/
+├── scripts/
+│   ├── deploy_on_instance.sh
+│   └── app.service
+├── cloudwatch/
+│   └── amazon-cloudwatch-agent.json
+├── .github/workflows/
+│   ├── terraform.yml
+│   └── infra-wake.yml
+└── README.md
 ```
 
 ---
