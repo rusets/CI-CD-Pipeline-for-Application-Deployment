@@ -34,7 +34,7 @@ It demonstrates how to build a **production-grade CI/CD environment** that stays
 ```mermaid
 flowchart TD
   subgraph CF[CloudFront + S3]
-    U[User / Browser] -->|click Wake Up| W[Wait Page<br/>https://app.ci-wake.online]
+    U[User / Browser] -->|Click “Wake Up”| W[Wait Page<br/>https://app.ci-wake.online]
   end
 
   W -->|POST /wake| API[API Gateway (HTTP)]
@@ -46,11 +46,11 @@ flowchart TD
   Lwake --> EC2[(EC2 Instance<br/>Amazon Linux 2023)]
   Lstatus --> EC2
 
-  subgraph CW[CloudWatch]
-    Lreaper[Lambda: reaper<br/>EventBridge every 5min] --> EC2
-    Lreaper -->|stop instance| EC2
-    EC2 -->|metrics/logs| Dash[Dashboard + Alarms]
-    Dash -->|SNS email| UserMail[Notification]
+  subgraph CW[CloudWatch & EventBridge]
+    Lreaper[Lambda: reaper<br/>Scheduled every 1 min] --> EC2
+    Lreaper -->|Stop instance| EC2
+    EC2 -->|Metrics & Logs| Dash[Dashboard + Alarms]
+    Dash -->|SNS Email| Mail[Notification]
   end
 
   style CF fill:#0e1117,stroke:#00bfff,stroke-width:2px
