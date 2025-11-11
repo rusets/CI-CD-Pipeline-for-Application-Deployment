@@ -203,3 +203,41 @@ ci-cd-pipeline-aws/
 - **Real cost control:** EC2 sleeps automatically after idle.  
 - **Visual dashboards:** live metrics and timeline of wake/sleep events.  
 - **Portfolio-ready:** clean architecture, full automation, real custom domains.
+
+## 🖼️ Screenshots — System in Action
+
+---
+
+### 1️⃣ Wait Page — Before Wake-Up  
+Shows the static landing page hosted on **S3 + CloudFront**, waiting for user interaction.  
+![Wait Page](docs/screenshots/1-wait-page.png)
+
+---
+
+### 2️⃣ Application Running — After Wake-Up  
+Once the user clicks **“Wake Up”**, the EC2 instance starts and the application becomes accessible.  
+![App Running](docs/screenshots/2-app-running.png)
+
+---
+
+### 3️⃣ GitHub Actions — infra-wake.yml  
+Triggered automatically or manually, this workflow deploys and updates the **serverless control plane**.  
+![GitHub Actions Wake](docs/screenshots/3-github-actions-wake.png)
+
+---
+
+### 4️⃣ GitHub Actions — terraform.yml  
+Full Terraform CI/CD job applying infrastructure changes via **OIDC authentication** (no stored AWS keys).  
+![GitHub Actions Terraform](docs/screenshots/4-github-actions-terraform.png)
+
+---
+
+### 5️⃣ CloudWatch Dashboard  
+Live metrics showing EC2 CPU, Lambda invocations, and system health — confirms successful automation.  
+![CloudWatch Dashboard](docs/screenshots/5-cloudwatch-dashboard.png)
+
+---
+
+### 6️⃣ SNS Email Alert  
+Example of a real **CloudWatch → SNS** notification delivered to email when an alarm triggers.  
+![SNS Alert Email](docs/screenshots/6-sns-alert-email.png)
