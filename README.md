@@ -1,4 +1,3 @@
-
 # 🚀 Ruslan AWS — CI/CD Pipeline for Application Deployment
 
 ![Terraform](https://img.shields.io/badge/IaC-Terraform-blueviolet)
@@ -10,24 +9,19 @@
 ---
 
 ## 🌐 Live Demo
-
-🔹 **Wait Page:** [https://app.ci-wake.online](https://app.ci-wake.online)  
-When you click **“Wake Up”**, the EC2 instance powers on automatically and the site becomes available.  
-After **5 minutes of inactivity**, it shuts down automatically — managed by AWS Lambda and CloudWatch.
+**Wait Page:** https://app.ci-wake.online  
+Click **“Wake Up”** to start the EC2 instance on-demand. After ~5 minutes of inactivity, it stops automatically to save costs (managed by Lambda + EventBridge + SSM).
 
 ---
 
 ## 🧠 Project Overview
-
-This project demonstrates a **production-grade AWS CI/CD pipeline** that deploys and manages an application using Infrastructure as Code (IaC).  
-It combines Terraform, GitHub Actions, and serverless automation to minimize cost while keeping the environment responsive and observable.
-
-**Core features:**
-- Full **Infrastructure as Code** (Terraform)
-- **GitHub Actions (OIDC)** — no long-term AWS credentials
-- **Serverless control plane:** Lambda + EventBridge
-- **Static wait page** on **S3 + CloudFront**
-- **Real-time monitoring** via CloudWatch and SNS
+Production‑grade, cost‑optimized AWS infrastructure delivered via **Terraform** and **GitHub Actions (OIDC)**.  
+Highlights:
+- **Serverless control plane** (Lambda: `wake`, `status`, `reaper`) to wake/sleep EC2 on demand
+- **Static wait site** on **S3 + CloudFront** with custom domain
+- **EventBridge** minute rule auto‑stops idle instances
+- **CloudWatch Dashboards & Alarms** + **SNS** email notifications
+- **Zero long‑lived AWS keys** — GitHub OIDC federated access
 
 ---
 
@@ -35,86 +29,68 @@ It combines Terraform, GitHub Actions, and serverless automation to minimize cos
 
 ```mermaid
 flowchart TD
-  A[Wait Page (S3 + CloudFront)] -->|POST /wake| B[API Gateway (HTTP)]
-  A -->|GET /status| B
-  B --> C[Lambda: wake]
-  B --> D[Lambda: status]
-  C --> E[(EC2 Instance)]
-  D --> E
-  F[EventBridge Rule (1m)] --> G[Lambda: reaper]
-  G --> E
-  E --> H[CloudWatch Dashboards & Alarms]
-  H --> I[SNS Email Notifications]
+  U[User] --> W[Wait Page (S3 + CloudFront)]
+  W -->|POST /wake| API[API Gateway (HTTP)]
+  W -->|GET /status| API
+  API --> LW[Lambda: wake]
+  API --> LS[Lambda: status]
+  LW --> EC2[(EC2 Instance)]
+  LS --> EC2
+  EB[EventBridge rule (1m)] --> LR[Lambda: reaper]
+  LR --> EC2
+  EC2 --> CW[CloudWatch Dashboards & Alarms]
+  CW --> SNS[SNS Email]
 ```
+*(No ARNs exposed in the diagram. GitHub renders this Mermaid block correctly.)*
 
 ---
 
-## 🧩 AWS Components
+## 🧩 AWS Services Used
+- **Amazon EC2** — application host (on‑demand start/stop)
+- **Amazon S3 + CloudFront** — static wait page (global CDN, low cost)
+- **Amazon API Gateway (HTTP)** — `/wake` and `/status` endpoints
+- **AWS Lambda** — `wake` (start EC2), `status` (report state), `reaper` (auto‑stop)
+- **Amazon EventBridge** — schedule `reaper` every minute
+- **AWS Systems Manager (SSM) Parameter Store** — last wake timestamp
+- **Amazon CloudWatch** — dashboards, metrics, logs, alarms
+- **Amazon SNS** — email notifications
+- **AWS IAM** — least‑privilege roles for Lambda, GitHub OIDC
+- **GitHub Actions (OIDC)** — Terraform CI/CD without static keys
+- **Terraform (S3 backend + DynamoDB lock)** — reproducible infra state
 
-| Category | Services |
-|-----------|-----------|
-| **Compute** | EC2 (Amazon Linux 2023) — app hosting |
-| **Serverless** | Lambda (`wake`, `status`, `reaper`) |
-| **API & Events** | API Gateway (HTTP), EventBridge |
-| **State & Config** | SSM Parameter Store (`/ci-wake/last_wake`), S3, DynamoDB (Terraform backend) |
-| **Monitoring & Alerts** | CloudWatch (metrics, dashboards, alarms), SNS (email) |
-| **Security & Access** | IAM roles, OIDC trust for GitHub Actions |
+---
+
+## 🚀 CI/CD (GitHub Actions)
+- Manual or push‑triggered workflows
+- `terraform fmt` + `validate` + `plan` + `apply/destroy`
+- Concurrency guards prevent parallel runs on same ref
+- Environment variables pass `TF_VAR_*` safely; no secrets committed
 
 ---
 
 ## 💰 Cost Optimization
-
-| Mechanism | Description |
-|------------|-------------|
-| 💤 **Auto Sleep** | EC2 automatically stops after inactivity (via `reaper`). |
-| ⚡ **Wake on Demand** | EC2 only starts when a user clicks “Wake Up”. |
-| ☁️ **Static Wait Page** | S3 + CloudFront = Always-Free tier. |
-| 🧠 **Serverless Control Plane** | Lambda only runs for milliseconds. |
-| 💾 **S3 + DynamoDB Backend** | Cheap, durable Terraform state management. |
-
----
-
-## 🚀 CI/CD Workflow (GitHub Actions)
-
-- **OIDC authentication** — no static AWS credentials.  
-- `terraform.yml`: main infrastructure (EC2, IAM, CloudWatch, SNS).  
-- `infra-wake.yml`: Lambda packaging, IAM, and scheduling logic.  
-- **Concurrency groups** prevent simultaneous runs.  
-- **Terraform plan/apply/destroy** automated per commit.  
+| Mechanism | What it does |
+|---|---|
+| **Wake on Demand** | EC2 stays **stopped** until a user clicks **Wake Up**. |
+| **Auto Sleep** | `reaper` stops EC2 after inactivity window (default 5 min). |
+| **Serverless Control Plane** | Lambda + API Gateway + EventBridge incur near‑zero idle cost. |
+| **Static CDN** | Wait page on S3 + CloudFront uses Always‑Free tier patterns. |
+| **Right‑sized IAM** | Scoped Lambda and OIDC permissions; no long‑lived keys. |
 
 ---
 
-## 📊 Monitoring & Alerts
-
-- **Dashboards:**
-  - EC2 — CPU Utilization, Status Checks  
-  - Lambda — Invocations, Duration, Errors  
-  - CloudWatch Agent — Memory, Disk  
-- **Alarms:**
-  - CPU > 70% → triggers **SNS email**
-- **SSM:**  
-  - `/ci-wake/last_wake` tracks the last wake timestamp
-
-### 🧪 Simulate Load (trigger alert)
-
+## 🧪 Simulate Load (to trigger CPU alarm)
+On the EC2 instance:
 ```bash
+# Amazon Linux 2023
 sudo dnf install -y stress-ng
 sudo stress-ng --cpu 4 --timeout 120
 ```
+(For older AMIs you can use `sudo yum install -y stress` and then `stress --cpu 4 --timeout 120`.)
 
 ---
 
-## 🧭 Domains & Certificates
-
-| Component | Domain | Description |
-|------------|---------|-------------|
-| 🌐 Wait Page | [app.ci-wake.online](https://app.ci-wake.online) | Hosted on S3 + CloudFront |
-| ⚙️ API Gateway | api.ci-wake.online | Custom domain + ACM certificate |
-
----
-
-## 🧾 Folder Structure
-
+## 🗂️ Repository Structure
 ```
 ci-cd-pipeline-aws/
 ├── app/
@@ -157,35 +133,41 @@ ci-cd-pipeline-aws/
 │   └── app.service
 ├── cloudwatch/
 │   └── amazon-cloudwatch-agent.json
-├── .github/workflows/
-│   ├── terraform.yml
-│   └── infra-wake.yml
-└── README.md
+├── docs/
+│   └── screenshots/
+│       ├── 1-wait-page.png
+│       ├── 2-app-running.png
+│       ├── 3-github-actions-wake.png
+│       ├── 4-github-actions-terraform.png
+│       ├── 5-cloudwatch-dashboard.png
+│       └── 6-sns-alert-email.png
+└── .github/workflows/
+    ├── terraform.yml
+    └── infra-wake.yml
 ```
 
 ---
 
-## 🖼️ Screenshots
-
-| # | Description | Image |
-|---|--------------|--------|
-| 1️⃣ | Wait Page (before wake) | ![Wait Page](docs/screenshots/1-wait-page.png) |
-| 2️⃣ | Running Application | ![App Running](docs/screenshots/2-app-running.png) |
-| 3️⃣ | GitHub Actions — infra-wake.yml | ![Wake Workflow](docs/screenshots/3-github-actions-wake.png) |
-| 4️⃣ | GitHub Actions — terraform.yml | ![Terraform Workflow](docs/screenshots/4-github-actions-terraform.png) |
-| 5️⃣ | CloudWatch Dashboard | ![CloudWatch Dashboard](docs/screenshots/5-cloudwatch-dashboard.png) |
-| 6️⃣ | SNS Email Alert | ![SNS Email Alert](docs/screenshots/6-sns-alert-email.png) |
+## 🖼️ Screenshots (quick view)
+> Images must exist in `docs/screenshots/`.
+- ![Wait Page](docs/screenshots/1-wait-page.png)
+- ![App Running](docs/screenshots/2-app-running.png)
+- ![GitHub Actions — wake](docs/screenshots/3-github-actions-wake.png)
+- ![GitHub Actions — terraform](docs/screenshots/4-github-actions-terraform.png)
+- ![CloudWatch Dashboard](docs/screenshots/5-cloudwatch-dashboard.png)
+- ![SNS Alert Email](docs/screenshots/6-sns-alert-email.png)
 
 ---
 
-## 🧠 Key Highlights
-
-- **Fully automated AWS deployment** with Terraform and GitHub Actions.  
-- **Zero manual credentials** — OIDC trust policy.  
-- **Dynamic cost control** — instance wakes/sleeps automatically.  
-- **Visual dashboards & alerts** for real-world observability.  
-- **Portfolio-grade presentation** — real domain, screenshots, full automation.
+## 🔑 Notes
+- Keep ARNs out of the diagram and README unless absolutely necessary.
+- If screenshots don’t load on GitHub, confirm the **relative path** and that the images are committed.
+- Mermaid block above is **GitHub‑compatible** (`flowchart TD` + `-->` edges, no stray `end`).
 
 ---
 
-© 2025 Ruslan AWS Projects — All rights reserved.
+## 📣 Key Takeaways (for recruiters)
+- Real AWS infra with on‑demand economics (wake/sleep)
+- Clean, auditable CI/CD via Terraform + OIDC
+- Production patterns: API Gateway, Lambda, EventBridge, CloudWatch, SNS, IAM
+- Clear dashboards + alarms to observe system behavior
