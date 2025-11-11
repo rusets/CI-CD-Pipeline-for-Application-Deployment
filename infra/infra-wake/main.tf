@@ -49,6 +49,8 @@ resource "aws_lambda_function" "wake" {
       SSM_PARAM_LAST_WAKE = var.ssm_param_last_wake
     }
   }
+
+  depends_on = [aws_iam_role_policy_attachment.gh_attach_lambda_admin_all]
 }
 
 resource "null_resource" "stage_status" {
@@ -83,6 +85,8 @@ resource "aws_lambda_function" "status" {
       INSTANCE_ID = local.instance_id_effective
     }
   }
+
+  depends_on = [aws_iam_role_policy_attachment.gh_attach_lambda_admin_all]
 }
 
 resource "null_resource" "stage_reaper" {
@@ -119,4 +123,6 @@ resource "aws_lambda_function" "reaper" {
       SSM_PARAM_LAST_WAKE = var.ssm_param_last_wake
     }
   }
+
+  depends_on = [aws_iam_role_policy_attachment.gh_attach_lambda_admin_all]
 }
