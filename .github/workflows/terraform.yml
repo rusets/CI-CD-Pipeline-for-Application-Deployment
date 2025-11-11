@@ -16,17 +16,6 @@ on:
         options: [apply, destroy]
         default: apply
 
-  push:
-    branches: [main]
-    paths:
-      - "infra/**"
-      - ".github/workflows/terraform.yml"
-  pull_request:
-    branches: [main]
-    paths:
-      - "infra/**"
-      - ".github/workflows/terraform.yml"
-
 permissions:
   id-token: write
   contents: read
@@ -43,7 +32,6 @@ env:
   AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
   TARGET_ENV: ${{ inputs.target_env || 'dev' }}
   PROJECT_NAME: ruslan-aws
-  ENVIRONMENT: prod
   TF_VAR_reaper_function_name: ruslan-aws-dev-reaper
 
 jobs:

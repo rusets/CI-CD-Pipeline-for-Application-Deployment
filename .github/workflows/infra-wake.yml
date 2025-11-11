@@ -9,11 +9,6 @@ on:
         type: choice
         options: [apply, destroy]
         default: apply
-  push:
-    branches: [main]
-    paths:
-      - "infra/infra-wake/**"
-      - ".github/workflows/infra-wake.yml"
 
 permissions:
   id-token: write

@@ -143,3 +143,23 @@ resource "aws_iam_role_policy_attachment" "gh_attach_lambda_admin" {
   role       = data.aws_iam_role.gh_oidc_role.name
   policy_arn = aws_iam_policy.gh_lambda_admin.arn
 }
+
+# Allow GetFunction on any Lambda (Terraform does existence checks by name)
+data "aws_iam_policy_document" "gh_lambda_get_any" {
+  statement {
+    sid       = "LambdaGetFunctionAny"
+    effect    = "Allow"
+    actions   = ["lambda:GetFunction"]
+    resources = ["arn:aws:lambda:${var.region}:${data.aws_caller_identity.current.account_id}:function:*"]
+  }
+}
+
+resource "aws_iam_policy" "gh_lambda_get_any" {
+  name   = "${var.project_name}-${var.environment}-gh-lambda-get-any"
+  policy = data.aws_iam_policy_document.gh_lambda_get_any.json
+}
+
+resource "aws_iam_role_policy_attachment" "gh_attach_lambda_get_any" {
+  role       = data.aws_iam_role.gh_oidc_role.name
+  policy_arn = aws_iam_policy.gh_lambda_get_any.arn
+}
