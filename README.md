@@ -1,266 +1,308 @@
-# 🚀 Ruslan AWS — CI/CD Pipeline for Application Deployment
+# 🚀 Ruslan AWS — Multi‑Tier “Wake & Apply” Demo (Terraform + GitHub Actions + AWS)
 
-![Terraform](https://img.shields.io/badge/IaC-Terraform-blueviolet)
-![AWS](https://img.shields.io/badge/Cloud-AWS-orange)
-![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-lightgrey)
-![Domain](https://img.shields.io/badge/Domain-app.ci--wake.online-blue)
-![Status](https://img.shields.io/badge/State-Auto%20Wake%2FSleep-green)
+![IaC Terraform](https://img.shields.io/badge/IaC-Terraform-7B42BC)
+![AWS](https://img.shields.io/badge/Cloud-AWS-FF9900)
+![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2C974B)
+![Cost](https://img.shields.io/badge/Cost-Idle%20Auto--Destroy%2015m-1f6feb)
 
----
-
-## 🌐 Live Demo
-
-**Wait Page:** https://app.ci-wake.online
-
-- Click **“Wake Up”** → the EC2 instance powers on automatically and the application becomes reachable.
-- After **5 minutes of inactivity**, the instance shuts down to save money — all controlled by **Lambda** + **EventBridge** + **SSM**.
-- GitHub Actions uses **OIDC** (no static keys) to apply Terraform.
+> **One‑line pitch:** Visit a public “Wait Page”, press **Wake Up**, the pipeline applies Terraform and brings the stack online, streams logs to the page, then **auto‑destroys after ~15 minutes of idle**. Minimal spend, maximum signal for recruiters.
 
 ---
 
-## 🧠 What this project demonstrates
+## Live Demo
 
-A production‑style, cost‑efficient deployment of an EC2‑hosted app with a **serverless control plane** and **IaC-first** approach:
+- **Wait Page (static):** `https://app.multi-tier.space/`  
+  - Click **Wake Up** → triggers CI/CD → infra is created.  
+  - After successful apply, the page **redirects** to the live app/site (see **Redirect** below).
+- **Redirect target (production site):** `https://multi-tier.space/`  
+- The **Wait Page S3 bucket**, **CloudFront distribution**, and **HTTP API** are **pre‑created manually** and intentionally **not re‑provisioned by Terraform** to keep the solution simple and avoid DNS churn.
 
-- **Terraform** provisions everything end‑to‑end.
-- **GitHub Actions (OIDC)** automates plan/apply/destroy.
-- **S3 + CloudFront** serve a static wait page with a **Wake Up** button.
-- **API Gateway (HTTP)** fronts **Lambda (wake/status/reaper)**.
-- **Lambda _wake_** starts the EC2 on demand; **Lambda _status_** returns live state; **Lambda _reaper_** auto-stops when idle.
-- **EventBridge** triggers reaper every minute (configurable).
-- **SSM Parameter Store** stores the last wake timestamp.
-- **CloudWatch Dashboards & Alarms** provide visibility and alerting (SNS email).
-
-This is the exact pattern you would present in a DevOps/Cloud interview to prove: automation, security (OIDC), and cost control under load.
+> If the system sits idle for ~15 minutes, an **Idle Reaper** tears it down to save cost. Visit the wait page again to re‑create on demand.
 
 ---
 
-## ⚙️ Architecture Overview
+## How It Works (High‑Level)
 
-```mermaid
-flowchart TD
-  U[User / Browser] -->|click Wake Up| W[Wait Page<br/>S3 + CloudFront]
-  W -->|POST /wake| API[API Gateway (HTTP)]
-  W -->|GET /status| API
-
-  API --> Lwake[Lambda: wake]
-  API --> Lstatus[Lambda: status]
-
-  Lwake --> EC2[EC2 Instance<br/>Amazon Linux 2023]
-  Lstatus --> EC2
-
-  EV[EventBridge rule (every 1 min)] --> Lreaper[Lambda: reaper]
-  Lreaper --> EC2
-
-  EC2 --> CW[CloudWatch Dashboards & Alarms]
-  CW --> SNS[SNS Topic (Email)]
-```
-
-> **Note:** Diagram uses simple, GitHub‑compatible Mermaid (no custom style blocks).
+1. **Static Wait Page (S3 + CloudFront)** presents a single button: **Wake Up**.  
+2. The button calls a **pre‑existing HTTP API (API Gateway v2, HTTP)** → **Lambda “wake”**.  
+3. The wake Lambda **dispatches a GitHub Actions workflow** (OIDC to AWS, no long‑lived keys) to **terraform apply** the stack.  
+4. While the apply runs, the page can **poll “status”** and **stream logs** (simple status Lambda).  
+5. When infra is **healthy**, user is **redirected** to the running site/app (`DEFAULT_DEST`).  
+6. **Heartbeat** + **Idle Reaper** monitor usage. If no activity for ~15 min → **terraform destroy** to minimize spend.
 
 ---
 
-## 🧩 AWS Services used (full list)
-
-- **Amazon EC2** — application host (Amazon Linux 2023), systemd service for app, user_data bootstrap.
-- **Amazon S3** — static hosting for wait page and storing build artifacts (Lambda ZIPs, site.zip).
-- **Amazon CloudFront** — CDN with custom domain `app.ci-wake.online` (ACM in `us-east-1`).
-- **AWS Certificate Manager (ACM)** — public cert for the domain.
-- **Amazon API Gateway (HTTP API)** — routes: `POST /wake`, `GET /status`.
-- **AWS Lambda** — three functions:
-  - **wake** (Node.js 20): Starts EC2, writes last wake timestamp to SSM.
-  - **status** (Python 3.12): Returns EC2 state + public IP/DNS.
-  - **reaper** (Python 3.12): Checks last wake and stops EC2 if idle.
-- **Amazon EventBridge** — cron rule (every 1 min) → invokes `reaper`.
-- **AWS Systems Manager Parameter Store** — parameter `/ci-wake/last_wake` (String, epoch seconds).
-- **Amazon CloudWatch** — metrics (EC2, Lambda), dashboards, and alarms (CPU > threshold).
-- **Amazon SNS** — topic for email alerts.
-- **AWS IAM** — OIDC role for GitHub Actions; Lambda execution role; scoped permissions by resource prefix.
-- **Terraform (remote state)** — S3 backend + DynamoDB lock table.
-- **GitHub Actions** — two workflows: `terraform.yml` (infra) and `infra-wake.yml` (wake plane).
-
----
-
-## 💰 Cost Optimization (complete)
-
-| Layer | Mechanism | Why it saves money |
-|------|-----------|--------------------|
-| Compute | **On‑demand wake / auto‑sleep** (Lambda `wake` + `reaper`) | EC2 is **off** unless actively used; billed minutes only when needed. |
-| Control plane | **Serverless** (Lambda + API GW + EventBridge) | Pay per request/invocation; near‑zero idle cost. |
-| Frontend | **S3 + CloudFront** | Always‑Free/low‑cost static hosting for the wait page; keeps EC2 off. |
-| Security | **OIDC to AWS** | No long‑lived keys → safer + no Secrets Manager costs for access keys. |
-| Storage | **S3/DynamoDB remote state** | Pennies per month; scales; no self‑hosted state servers. |
-| Monitoring | **Targeted dashboards/alarms** | Minimal custom metrics; relies on free default namespace metrics. |
-| Rightsizing | **t3/t4g burstable class** | Low baseline cost, CPU credits for short bursts. |
-| Region | **us‑east‑1** | Cheapest region for many managed services and ACM/CloudFront interop. |
-
----
-
-## 🧪 How to trigger an alarm (for screenshots)
-
-SSH/SSM into the EC2 instance and run one of the following to simulate high CPU:
-
-**Amazon Linux 2 / older:**
-
-```bash
-sudo yum install -y stress
-stress --cpu 4 --timeout 180
-```
-
-**Amazon Linux 2023:**
-
-```bash
-sudo dnf install -y stress-ng
-sudo stress-ng --cpu 4 --timeout 180
-```
-
-You should then capture **CloudWatch Dashboard** and **Alarm** state changes.
-
----
-
-## 📸 Screenshots (place these under `docs/screenshots/`)
-
-> Ensure the paths below exist in your repo: `docs/screenshots/<file>.png`
-
-1. **Wait page (before Wake Up)**  
-   `docs/screenshots/1-wait-page.png`
-
-2. **App running (after redirect)**  
-   `docs/screenshots/2-app-running.png`
-
-3. **GitHub Actions — infra-wake.yml successful run**  
-   `docs/screenshots/3-github-actions-wake.png`
-
-4. **GitHub Actions — terraform.yml successful run**  
-   `docs/screenshots/4-github-actions-terraform.png`
-
-5. **CloudWatch Dashboard (EC2 + Lambda panels)**  
-   `docs/screenshots/5-cloudwatch-dashboard.png`
-
-6. **SNS alert email (ALARM state)**  
-   `docs/screenshots/6-sns-alert-email.png`
-
-Inline gallery example:
-
-| | |
-|---|---|
-| ![Wait](docs/screenshots/1-wait-page.png) | ![Running](docs/screenshots/2-app-running.png) |
-| ![Wake CI](docs/screenshots/3-github-actions-wake.png) | ![Terraform CI](docs/screenshots/4-github-actions-terraform.png) |
-| ![Dashboards](docs/screenshots/5-cloudwatch-dashboard.png) | ![SNS](docs/screenshots/6-sns-alert-email.png) |
-
----
-
-## 🧾 Full Folder Structure (expanded)
+## Architecture (Services & Data Flow)
 
 ```
-ci-cd-pipeline-aws/
-├── app/
-│   └── public/
-│       ├── assets/
-│       │   ├── css/
-│       │   └── js/
-│       └── index.html
-├── build/
-│   ├── site.zip
-│   ├── wake.zip
-│   ├── status.zip
-│   ├── reaper.zip
-│   └── stage/
-│       ├── status/
-│       └── reaper/
-├── cloudwatch/
-│   └── amazon-cloudwatch-agent.json
-├── docs/
-│   └── screenshots/
-│       ├── 1-wait-page.png
-│       ├── 2-app-running.png
-│       ├── 3-github-actions-wake.png
-│       ├── 4-github-actions-terraform.png
-│       ├── 5-cloudwatch-dashboard.png
-│       └── 6-sns-alert-email.png
-├── infra/
-│   ├── alarms.tf
-│   ├── backend.tf
-│   ├── dashboard.tf
-│   ├── iam.tf
+User → CloudFront → S3 (Wait Page)
+             │
+             └── “Wake Up” → API Gateway (HTTP)
+                             └→ Lambda: wake (Node.js)
+                                 └→ GitHub Actions (OIDC) → Terraform Apply
+                                              │
+                                              ├→ AWS: VPC / EC2 (or ECR/ECS/EKS/RDS as needed)
+                                              └→ CloudWatch (logs/alarms)
+                             └→ Lambda: status (Python) → Streams status/log tail
+                             └→ Lambda: heartbeat (Python)
+                             └→ Lambda: idle-reaper (Python) → Terraform Destroy
+```
+
+**Key AWS Services used**
+
+- **CloudFront + S3** — global, cheap **Wait Page** delivery.
+- **API Gateway (HTTP)** — public webhook endpoint for **wake/status**.
+- **AWS Lambda** — serverless control plane:
+  - `wake` (Node.js 20) — kicks off apply via GitHub Actions.
+  - `status` (Python 3.12) — returns pipeline/log status to the UI.
+  - `heartbeat` (Python 3.12) — marks activity.
+  - `idle-reaper` (Python 3.12) — destroys infra after inactivity.
+- **GitHub Actions + OIDC** — short‑lived auth to AWS (no secrets printed).
+- **Terraform** — infra as code for the ephemeral stack.
+- **CloudWatch** — logs, metrics, optional alarms.
+
+> **Deliberate simplification:** The **S3 bucket** (`multi-tier-demo-wait-site`), **CloudFront distribution** (`EVOB3TLZSKCR0`), and **HTTP API** (`multi-tier-wait-api`, stage `prod`) already exist and are **not** re‑created by Terraform per project goal.
+
+---
+
+## Redirect Behavior
+
+- On successful apply and green health‑check, the Wait Page redirects to **`https://multi-tier.space/`**.  
+- The destination can be configured by the page as `DEFAULT_DEST` (static) or by status payload coming from the control plane.
+
+---
+
+## Repository Structure (suggested)
+
+```
+.
+├── .github/workflows/
+│   └── infra.yml                 # apply/destroy, OIDC → AWS
+├── infra/                        # Terraform for ephemeral stack (NOT the S3/CF/API)
 │   ├── main.tf
-│   ├── outputs.tf
-│   ├── providers.tf
-│   ├── sns.tf
-│   ├── terraform.tfvars
-│   ├── user_data.sh
-│   ├── user_data.tpl
 │   ├── variables.tf
+│   ├── outputs.tf
 │   ├── versions.tf
-│   └── infra-wake/
-│       ├── backend.tf
-│       ├── iam.tf
-│       ├── main.tf
-│       ├── outputs.tf
-│       ├── schedule.tf
-│       ├── terraform.tfvars
-│       ├── variables.tf
-│       └── versions.tf
+│   ├── ssm.tf                    # parameters (tokens, config)
+│   ├── user_data.sh              # app bootstrap (preserve user code)
+│   └── modules/...               # optional
 ├── lambdas/
-│   ├── _common/
-│   │   └── timeparse.py
-│   ├── reaper/
-│   │   └── index.py
-│   ├── status/
-│   │   └── index.py
-│   └── wake/
-│       └── index.js
-├── scripts/
-│   ├── app.service
-│   └── deploy_on_instance.sh
-├── wait-site/
-│   ├── assets/
-│   │   ├── css/
-│   │   └── js/
-│   └── index.html
-└── .github/workflows/
-    ├── terraform.yml
-    └── infra-wake.yml
+│   ├── wake/                     # Node.js 20
+│   ├── status/                   # Python 3.12
+│   ├── heartbeat/                # Python 3.12
+│   └── reaper/                   # Python 3.12
+├── wait-site/                    # S3 site (HTML/CSS/JS bundle)
+└── docs/
+    ├── architecture.png
+    ├── flow.png
+    └── screenshots/              # place your ready screenshots here
 ```
 
 ---
 
-## 🔐 Security & IAM (high level)
+## Prerequisites
 
-- GitHub → AWS via **OIDC** role (`github-actions-ci-cd-pipeline-aws`).
-- Lambda execution role: least‑privilege to **start/stop EC2** by tag or ID, **Get/Put** the exact SSM param, and **CloudWatch Logs**.
-- Additional scoped policy allowing GitHub Actions to **CRUD only functions with prefix** `ruslan-aws-<env>-*` and **pass** the execution role.
-
----
-
-## 🧭 Domain & Certificates
-
-- **Wait site**: `app.ci-wake.online` via CloudFront + S3.
-- **API**: custom domain `api.ci-wake.online` (optional), ACM in `us-east-1`.
-
-> ACM example ARN (keep in repo notes if needed):  
-> `arn:aws:acm:us-east-1:097635932419:certificate/0d400c46-2086-41b1-b6c2-74112715701a`
+- **AWS account** with access to the pre‑created:
+  - S3 bucket: **`multi-tier-demo-wait-site`**
+  - CloudFront distribution: **`EVOB3TLZSKCR0`**
+  - API Gateway HTTP API: **`multi-tier-wait-api`**, stage **`prod`**
+- **GitHub repo** with **Actions** enabled and **OIDC** trust to an AWS role.
+- **Terraform >= 1.6** installed locally (for dev) and in CI runner.
+- **Node.js 20** (for `wake` build) and **Python 3.12** (for others) if building locally.
 
 ---
 
-## 📌 Portfolio Tips
+## Secrets & Configuration
 
-- Keep **both** workflows green and pinned in README badges.
-- Include the **diagram**, the **screenshots grid**, and a short **“How it works”** GIF if you want extra flair.
-- Add a short **“What I’d improve next”** section (multi‑AZ ASG; health checks; ALB; blue/green).
+Prefer **AWS SSM Parameter Store** for secrets. Keep passwords **out of Terraform state**. Use **RDS `manage_master_user_password`** when applicable. Typical parameters:
+
+| Parameter Name                         | Example / Notes                                      |
+|---------------------------------------|------------------------------------------------------|
+| `/project/github/token`               | Fine‑grained PAT if needed; prefer OIDC when possible |
+| `/project/github/repo`                | `rusets/aws-multi-tier-infra`                        |
+| `/project/github/workflow`            | `.github/workflows/infra.yml`                        |
+| `/project/runtime/default_dest`       | `https://multi-tier.space/`                          |
+| `/project/idle/timeout_minutes`       | `15`                                                 |
+
+> For **EC2 access**, use **SSM Session Manager** (no SSH key pairs).
 
 ---
 
-## 📦 Reproduce locally (optional)
+## CI/CD — GitHub Actions (infra.yml)
+
+**Workflow dispatch** with two actions: `apply` and `destroy`. Example snippet (truncated for brevity):
+
+```yaml
+name: infra
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform action"
+        required: true
+        type: choice
+        default: apply
+        options: [apply, destroy]
+      auto_approve:
+        description: "Apply/destroy without manual approval"
+        required: true
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      - "infra/**/*.tf"
+      - ".github/workflows/**"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  TF_IN_AUTOMATION: "1"
+  ACTION: ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'apply' }}
+  AUTO_APPROVE: ${{ github.event_name == 'workflow_dispatch' && inputs.auto_approve || 'true' }}
+  TF_PLUGIN_CACHE_DIR: ~/.terraform.d/plugin-cache
+  BUCKET: multi-tier-demo-wait-site
+```
+
+**Explanation (why this matters):**  
+- `id-token: write` + OIDC → short‑lived AWS creds (no hardcoded keys).  
+- `ACTION` / `AUTO_APPROVE` control non‑interactive runs.  
+- `BUCKET` used to upload the wait‑site bundle (for cache‑busting + speed).
+
+---
+
+## Terraform Conventions (important)
+
+- **No one‑line HCL blocks.** Use **multiline**, clean, portfolio‑ready files.  
+- **Do not** store secrets in `terraform.tfvars` or Terraform state.  
+- For **RDS**, prefer `manage_master_user_password = true` and read at runtime via instance role.  
+- **Preserve user app code** in `user_data.sh`; change only bootstrap & secret retrieval.  
+- **Comments** go **below** code blocks in markdown, not inline.
+
+---
+
+## Quick Start (local verification)
 
 ```bash
-# prerequisites: terraform >= 1.6, awscli, jq
+# 1) Clone and enter repo
+git clone https://github.com/<you>/<repo>.git
+cd <repo>
+
+# 2) Set AWS profile/region (or let GitHub Actions assume via OIDC)
+export AWS_REGION=us-east-1
+
+# 3) Build Lambda zips (if building locally)
+make build   # or scripts/build.sh
+
+# 4) Terraform init/plan/apply for ephemeral stack (local test)
 cd infra
-terraform init -upgrade
-terraform plan -var="environment=dev"
-terraform apply -auto-approve -var="environment=dev"
+terraform init
+terraform plan -out=tf.plan
+terraform apply -auto-approve tf.plan
+
+# 5) Upload/refresh Wait Page (S3 + CF)
+aws s3 sync ./wait-site s3://multi-tier-demo-wait-site/ --delete
+aws cloudfront create-invalidation --distribution-id EVOB3TLZSKCR0 --paths "/*"
 ```
+
+**What the commands do:**  
+- Clone, set region, and (optionally) build Lambda packages.  
+- Apply Terraform for the **ephemeral** stack only (not S3/CF/API).  
+- Sync the latest **Wait Page** assets and **invalidate** CloudFront cache.
 
 ---
 
-**Author:** Ruslan AWS • CI/CD & Cost‑Optimized Autowake Pattern
+## End‑to‑End via the UI
+
+1. Open `https://app.multi-tier.space/`.  
+2. Click **Wake Up**. The page calls the API → `wake` Lambda → GitHub Actions → `terraform apply`.  
+3. The page polls **status** (optional log tail).  
+4. On green **health‑gate**, it **redirects** to `https://multi-tier.space/`.  
+5. After ~15 minutes of idle (no heartbeats), **idle‑reaper** triggers **destroy**.
+
+---
+
+## Cost Optimization
+
+- **Ephemeral infra**: run only when someone needs it.  
+- **Idle Reaper (~15 min)**: automated teardown on inactivity.  
+- **Serverless control plane**: Lambdas are near‑zero when idle.  
+- **CloudFront + S3** for the Wait Page: pennies per month.  
+- **No long‑lived EC2** unless the demo is “awake”.
+
+---
+
+## Observability & Ops
+
+- **CloudWatch Logs** for all Lambdas.  
+- Optional **metrics/alarms** (faults, latency, throttles).  
+- **Runbooks** for common failures (examples in `docs/runbook.md` suggested).  
+- **Health‑gate** in CI: block success until `/health` returns 200.
+
+---
+
+## Security Notes
+
+- **OIDC** from GitHub → AWS role with **least privilege** (no static keys).  
+- Lock down Lambda permissions (include read actions like `lambda:GetFunction` that CI may need).  
+- Keep artifacts in a controlled S3 path; avoid public buckets beyond the Wait Page.  
+- Prefer **SSM Parameter Store** and **instance role** for runtime secrets.
+
+---
+
+## Troubleshooting
+
+**Wake button does nothing**  
+- Invalidate CloudFront after uploading new site assets.  
+- Verify API Gateway endpoint/stage mapping on the Wait Page.  
+- Check `wake` Lambda logs.
+
+**Workflow starts but fails**  
+- Role trust/OIDC mis‑configured; verify `aud`/`sub` conditions.  
+- Missing IAM actions (e.g., `lambda:GetFunction`, `logs:CreateLogStream`).  
+- Provider version drift; re‑run `terraform init -upgrade`.
+
+**No redirect after success**  
+- Ensure `DEFAULT_DEST` matches `https://multi-tier.space/`.  
+- Confirm health‑gate passes (target `/health` returns 200).
+
+**Idle destroy never happens**  
+- Validate heartbeat is written; check timer expression and permissions.  
+- Confirm the `idle timeout` parameter in SSM is set to `15` (minutes).
+
+---
+
+## Roadmap / Future Work
+
+- Stream Terraform logs to the Wait Page UI in real time (pretty tail).  
+- Add a **declarative health‑gate** in CI with rollback on failure.  
+- Expand demo to a **K3s/EKS** path with Helm, Prometheus, Grafana.  
+- Blue/Green or Canary for the app tier.  
+- Add `OPA/Conftest` **Policy‑as‑Code** to gate risky Terraform changes.
+
+---
+
+## Screenshots
+
+Place your PNGs in `docs/screenshots/` and reference them here:
+
+- `docs/screenshots/wait-page.png`  
+- `docs/screenshots/log-stream.png`  
+- `docs/screenshots/redirect.png`
+
+---
+
+## License
+
+MIT (or your preference).
+
+---
+
+### Author
+
+**Ruslan Dashkin — “Ruslan AWS 🚀”**  
+Portfolio & projects, AWS/DevOps focus.
