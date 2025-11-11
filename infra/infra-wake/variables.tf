@@ -20,8 +20,21 @@ variable "environment" {
 }
 
 variable "instance_id" {
-  description = "Existing EC2 instance to wake/sleep (i-xxxxxxxxxxxxxx)"
+  description = "Optional explicit EC2 instance ID; if null, resolve by tag"
   type        = string
+  default     = null
+}
+
+variable "instance_tag_key" {
+  description = "EC2 tag key used to locate the instance when instance_id is null"
+  type        = string
+  default     = "Name"
+}
+
+variable "instance_tag_value" {
+  description = "EC2 tag value used to locate the instance when instance_id is null"
+  type        = string
+  default     = "ruslan-aws-dev"
 }
 
 variable "idle_minutes" {
@@ -35,4 +48,3 @@ variable "ssm_param_last_wake" {
   type        = string
   default     = "/ci-wake/last_wake"
 }
-

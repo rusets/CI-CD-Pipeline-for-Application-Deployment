@@ -2,37 +2,43 @@ import os
 import time
 import json
 import boto3
+from botocore.exceptions import ClientError
 
-EC2 = boto3.client("ec2", region_name=os.environ.get("AWS_REGION", "us-east-1"))
-INSTANCE_ID = os.environ.get("INSTANCE_ID")
+AWS_REGION = os.environ.get("AWS_REGION", "us-east-1").strip() or "us-east-1"
+INSTANCE_ID = (os.environ.get("INSTANCE_ID") or "").strip()
 
-def _describe_state(instance_id: str) -> dict:
-    d = EC2.describe_instances(InstanceIds=[instance_id])
-    inst = d["Reservations"][0]["Instances"][0]
-    return {
-        "ok": True,
-        "instanceId": instance_id,
-        "state": inst["State"]["Name"],
-        "publicIp": inst.get("PublicIpAddress"),
-        "publicDns": inst.get("PublicDnsName"),
-        "now": int(time.time())
-    }
+ec2 = boto3.client("ec2", region_name=AWS_REGION)
 
-def _wrap(event, payload: dict, status: int = 200):
+def _wrap(event, payload, status=200):
     is_apigw = isinstance(event, dict) and (event.get("version") == "2.0" or "rawPath" in event)
-    if is_apigw:
+    return {"statusCode": status, "headers": {"Content-Type": "application/json"}, "body": json.dumps(payload)} if is_apigw else payload
+
+def _describe(instance_id):
+    try:
+        resp = ec2.describe_instances(InstanceIds=[instance_id])
+        resv = resp.get("Reservations", [])
+        insts = resv and resv[0].get("Instances", [])
+        if not insts:
+            return None, "Instance not found"
+        inst = insts[0]
+        state = (inst.get("State") or {}).get("Name", "unknown")
         return {
-            "statusCode": status,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps(payload)
-        }
-    return payload
+            "ok": True,
+            "instanceId": instance_id,
+            "state": state,
+            "publicIp": inst.get("PublicIpAddress") or "",
+            "publicDns": inst.get("PublicDnsName") or "",
+            "now": int(time.time())
+        }, None
+    except ClientError as e:
+        return None, e.response.get("Error", {}).get("Message", str(e))
+    except Exception as e:
+        return None, str(e)
 
 def lambda_handler(event, context):
     if not INSTANCE_ID:
         return _wrap(event, {"ok": False, "error": "Missing INSTANCE_ID"}, 500)
-    try:
-        payload = _describe_state(INSTANCE_ID)
-        return _wrap(event, payload, 200)
-    except Exception as e:
-        return _wrap(event, {"ok": False, "error": str(e)}, 500)
+    payload, err = _describe(INSTANCE_ID)
+    if err:
+        return _wrap(event, {"ok": False, "error": err}, 500)
+    return _wrap(event, payload, 200)
