@@ -32,30 +32,42 @@ It demonstrates how to build a **production-grade CI/CD environment** that stays
 ## ⚙️ Architecture
 
 ```mermaid
-flowchart TD
-  U[User or Browser] -->|click Wake Up| W[Wait Page app.ci-wake.online]
 
-  W -->|POST /wake| API[API Gateway HTTP]
+  U -->|click Wake Up| W
+  W -->|POST /wake| API
   W -->|GET /status| API
-
-  API --> Lwake[Lambda wake]
-  API --> Lstatus[Lambda status]
-
-  Lwake --> EC2[EC2 Instance Amazon Linux 2023]
+  API --> Lwake
+  API --> Lstatus
+  Lwake --> EC2
   Lstatus --> EC2
+  Reaper --> EC2
+  EC2 --> Dash
+  Dash --> SNS
 
-  Reaper[Lambda reaper EventBridge 1m] --> EC2
-  EC2 --> Dash[CloudWatch Dashboards and Alarms]
-  Dash --> SNS[SNS Email Notifications]
-  end
+  
+  W["Wait Page (app.ci-wake.online)"]
+  API["API Gateway (HTTP)"]
+  Lwake["Lambda: wake"]
+  Lstatus["Lambda: status"]
+  Reaper["Lambda: reaper (EventBridge 1m)"]
+  EC2["EC2 (Amazon Linux 2023)"]
+  Dash["CloudWatch Dashboards & Alarms"]
+  SNS["SNS Email Notifications"]
 
-  style CF fill:#0e1117,stroke:#00bfff,stroke-width:2px
-  style CW fill:#1e2230,stroke:#ff9800,stroke-width:2px
-  style API fill:#18202d,stroke:#66ccff,stroke-width:1.5px
-  style EC2 fill:#f07b05,stroke:#fff,stroke-width:2px
-  style Lwake fill:#00a67c,stroke:#fff
-  style Lstatus fill:#0077cc,stroke:#fff
-  style Lreaper fill:#e91e63,stroke:#fff
+
+  classDef cloud fill:#0e1117,stroke:#66ccff,stroke-width:1.5px,color:#fff;
+  classDef lambda fill:#00a67c,stroke:#fff,color:#fff;
+  classDef lambda2 fill:#0077cc,stroke:#fff,color:#fff;
+  classDef lambda3 fill:#e91e63,stroke:#fff,color:#fff;
+  classDef ec2 fill:#f07b05,stroke:#fff,color:#000;
+  classDef box fill:#18202d,stroke:#999,color:#fff;
+
+  class W,API cloud;
+  class Lwake lambda;
+  class Lstatus lambda2;
+  class Reaper lambda3;
+  class EC2 ec2;
+  class Dash,SNS box;
 ```
 
 ---
