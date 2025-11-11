@@ -34,16 +34,42 @@ It demonstrates how to build a **production-grade CI/CD environment** that stays
 
 ```mermaid
 flowchart TD
-  U[User / Browser] -->|click Wake Up| W[Wait Page app.ci-wake.online]
-  W -->|POST /wake| API[API Gateway (HTTP)]
-  W -->|GET /status| API
-  API --> Lwake[Lambda: wake]
-  API --> Lstatus[Lambda: status]
-  Lwake --> EC2[(EC2 Instance Amazon Linux 2023)]
+  subgraph User
+    U[User / Browser]
+  end
+
+  subgraph Frontend["Wait Page (S3 + CloudFront)"]
+    W[Wait Page: app.ci-wake.online]
+  end
+
+  subgraph API["API Gateway (HTTP)"]
+    API1[Route: POST /wake]
+    API2[Route: GET /status]
+  end
+
+  subgraph Lambda["Serverless Control Plane"]
+    Lwake[Lambda: wake]
+    Lstatus[Lambda: status]
+    Lreaper[Lambda: reaper (EventBridge every 5 min)]
+  end
+
+  subgraph Infra["AWS Infrastructure (EC2 + Monitoring)"]
+    EC2[EC2 Instance: Amazon Linux 2023]
+    CW[CloudWatch Dashboards & Alarms]
+    SNS[SNS Email Notification]
+  end
+
+  %% Connections
+  U --> W
+  W --> API1
+  W --> API2
+  API1 --> Lwake
+  API2 --> Lstatus
+  Lwake --> EC2
   Lstatus --> EC2
-  Lreaper[Lambda: reaper (EventBridge every 5min)] --> EC2
-  EC2 --> CW[CloudWatch Dashboard & Alarms]
-  CW --> SNS[(SNS Email Notification)]
+  Lreaper --> EC2
+  EC2 --> CW
+  CW --> SNS
 ```
 
 ---
