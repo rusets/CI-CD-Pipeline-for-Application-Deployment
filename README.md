@@ -33,9 +33,11 @@ It demonstrates how to build a **production-grade CI/CD environment** that stays
 
 ```mermaid
 flowchart TD
-  U["User / Browser"] -->|Wake Up| W["Wait Page: app.ci-wake.online"]
+  subgraph CF["CloudFront + S3 — Wait Site"]
+    U["User / Browser"] -->|Wake Up| W["Wait Page: app.ci-wake.online"]
+  end
 
-  W -->|POST /wake| API["API Gateway (HTTP)"]
+  W -->|POST /wake| API["API Gateway HTTP"]
   W -->|GET /status| API
 
   API --> Lwake["Lambda: wake"]
@@ -44,18 +46,19 @@ flowchart TD
   Lwake --> EC2["EC2: Amazon Linux 2023"]
   Lstatus --> EC2
 
-  Reaper["Lambda: reaper (EventBridge 1m)"] --> EC2
-  EC2 --> Dash["CloudWatch Dashboards & Alarms"]
-  Dash --> SNS["SNS Email Notifications"]
+  subgraph CW["CloudWatch"]
+    Reaper["Lambda: reaper (EventBridge 1m)"] --> EC2
+    EC2 --> Dash["Dashboards & Alarms"]
+    Dash --> SNS["SNS Email"]
   end
 
   style CF fill:#0e1117,stroke:#00bfff,stroke-width:2px
   style CW fill:#1e2230,stroke:#ff9800,stroke-width:2px
   style API fill:#18202d,stroke:#66ccff,stroke-width:1.5px
-  style EC2 fill:#f07b05,stroke:#fff,stroke-width:2px
-  style Lwake fill:#00a67c,stroke:#fff
-  style Lstatus fill:#0077cc,stroke:#fff
-  style Lreaper fill:#e91e63,stroke:#fff
+  style EC2 fill:#f07b05,stroke:#ffffff,stroke-width:2px
+  style Lwake fill:#00a67c,stroke:#ffffff
+  style Lstatus fill:#0077cc,stroke:#ffffff
+  style Reaper fill:#e91e63,stroke:#ffffff
 ```
 
 ---
