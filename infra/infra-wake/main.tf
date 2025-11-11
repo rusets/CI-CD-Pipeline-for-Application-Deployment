@@ -6,7 +6,6 @@ locals {
   project_root = abspath("${path.module}/../..")
   lambdas_root = "${local.project_root}/lambdas"
   build_root   = "${local.project_root}/build"
-  stage_root   = "${local.build_root}/stage"
 }
 
 ############################################
@@ -28,24 +27,29 @@ locals {
 }
 
 ############################################
-# Prepare build and stage directories
-############################################
-resource "null_resource" "prepare_build" {
-  provisioner "local-exec" {
-    command = "mkdir -p ${local.build_root} ${local.stage_root}/status ${local.stage_root}/reaper"
-  }
-}
-
-############################################
-# ZIP — wake (Node.js 20) direct from source
+# ZIP — archive functions directly from source
 ############################################
 data "archive_file" "wake_zip" {
   type        = "zip"
   source_dir  = "${local.lambdas_root}/wake"
   output_path = "${local.build_root}/wake.zip"
-  depends_on  = [null_resource.prepare_build]
 }
 
+data "archive_file" "status_zip" {
+  type        = "zip"
+  source_dir  = "${local.lambdas_root}/status"
+  output_path = "${local.build_root}/status.zip"
+}
+
+data "archive_file" "reaper_zip" {
+  type        = "zip"
+  source_dir  = "${local.lambdas_root}/reaper"
+  output_path = "${local.build_root}/reaper.zip"
+}
+
+############################################
+# Lambda — wake (Node.js 20)
+############################################
 resource "aws_lambda_function" "wake" {
   function_name    = "${local.name_prefix}-wake"
   role             = aws_iam_role.lambda_role.arn
@@ -64,26 +68,8 @@ resource "aws_lambda_function" "wake" {
 }
 
 ############################################
-# Stage — status (Python) with _common
+# Lambda — status (Python 3.12)
 ############################################
-resource "null_resource" "stage_status" {
-  provisioner "local-exec" {
-    command = <<-SH
-      rsync -a --delete "${local.lambdas_root}/status/" "${local.stage_root}/status/"
-      mkdir -p "${local.stage_root}/status/_common"
-      rsync -a "${local.lambdas_root}/_common/" "${local.stage_root}/status/_common/"
-    SH
-  }
-  depends_on = [null_resource.prepare_build]
-}
-
-data "archive_file" "status_zip" {
-  type        = "zip"
-  source_dir  = "${local.stage_root}/status"
-  output_path = "${local.build_root}/status.zip"
-  depends_on  = [null_resource.stage_status]
-}
-
 resource "aws_lambda_function" "status" {
   function_name    = "${local.name_prefix}-status"
   role             = aws_iam_role.lambda_role.arn
@@ -101,26 +87,8 @@ resource "aws_lambda_function" "status" {
 }
 
 ############################################
-# Stage — reaper (Python) with _common
+# Lambda — reaper (Python 3.12)
 ############################################
-resource "null_resource" "stage_reaper" {
-  provisioner "local-exec" {
-    command = <<-SH
-      rsync -a --delete "${local.lambdas_root}/reaper/" "${local.stage_root}/reaper/"
-      mkdir -p "${local.stage_root}/reaper/_common"
-      rsync -a "${local.lambdas_root}/_common/" "${local.stage_root}/reaper/_common/"
-    SH
-  }
-  depends_on = [null_resource.prepare_build]
-}
-
-data "archive_file" "reaper_zip" {
-  type        = "zip"
-  source_dir  = "${local.stage_root}/reaper"
-  output_path = "${local.build_root}/reaper.zip"
-  depends_on  = [null_resource.stage_reaper]
-}
-
 resource "aws_lambda_function" "reaper" {
   function_name    = "${local.name_prefix}-reaper"
   role             = aws_iam_role.lambda_role.arn

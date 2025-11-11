@@ -5,14 +5,10 @@ data "aws_caller_identity" "current" {}
 
 data "aws_iam_policy_document" "assume_lambda" {
   statement {
-    actions = [
-      "sts:AssumeRole"
-    ]
+    actions = ["sts:AssumeRole"]
     principals {
-      type = "Service"
-      identifiers = [
-        "lambda.amazonaws.com"
-      ]
+      type        = "Service"
+      identifiers = ["lambda.amazonaws.com"]
     }
   }
 }
@@ -31,7 +27,7 @@ locals {
 }
 
 ############################################
-# Inline policy — Start/Stop by ID (if set) or by Tag; +Describe, +SSM, +Logs
+# Inline policy — Start/Stop by ID or by Tag; +Describe, +SSM, +Logs
 ############################################
 resource "aws_iam_role_policy" "lambda_inline" {
   name = "${var.project_name}-${var.environment}-inline"
