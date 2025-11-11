@@ -33,21 +33,20 @@ It demonstrates how to build a **production-grade CI/CD environment** that stays
 
 ```mermaid
 flowchart TD
-  U[User / Browser] -->|click Wake Up| W[Wait Page (app.ci-wake.online)]
+  U[User or Browser] -->|click Wake Up| W[Wait Page app.ci-wake.online]
 
-  W -->|POST /wake| API[API Gateway (HTTP)]
+  W -->|POST /wake| API[API Gateway HTTP]
   W -->|GET /status| API
 
-  API --> Lwake[Lambda: wake]
-  API --> Lstatus[Lambda: status]
+  API --> Lwake[Lambda wake]
+  API --> Lstatus[Lambda status]
 
-  Lwake --> EC2[EC2 Instance (Amazon Linux 2023)]
+  Lwake --> EC2[EC2 Instance Amazon Linux 2023]
   Lstatus --> EC2
 
-  Lreaper[Lambda: reaper (EventBridge 1m)] --> EC2
-  EC2 --> Dash[CloudWatch Dashboards & Alarms]
-  Dash --> SNS[SNS Email]
-
+  Lreaper[Lambda reaper EventBridge 1m] --> EC2
+  EC2 --> Dash[CloudWatch Dashboards and Alarms]
+  Dash --> SNS[SNS Email Notifications]
   end
 
   style CF fill:#0e1117,stroke:#00bfff,stroke-width:2px
