@@ -32,34 +32,30 @@ It demonstrates how to build a **production-grade CI/CD environment** that stays
 ## ⚙️ Architecture
 
 ```mermaid
-flowchart TB
-  %% === Frontend Layer ===
+flowchart LR
+  %% === Frontend Section ===
   subgraph Frontend["🌐 Frontend Layer"]
     A["🟨 CloudFront + S3<br/>Wait Page (app.ci-wake.online)"]
   end
 
-
-  %% === API Layer ===
+  %% === API Section ===
   subgraph API["⚙️ API Gateway Layer"]
-    B["🟨 API Gateway (HTTP)<br/>Entry point for wake/status"]
+    B["🟨 API Gateway (HTTP)<br/>Trigger Lambda functions"]
   end
 
-
-  %% === Lambda Layer ===
+  %% === Lambda Control Plane ===
   subgraph Lambdas["☁️ Serverless Control Plane"]
     C["🟢 Lambda — wake<br/>Start EC2 instance"]
     D["🔵 Lambda — status<br/>Check EC2 state"]
     F["💗 Lambda — reaper<br/>Stop idle EC2 (EventBridge 1m)"]
   end
 
-
-  %% === Infrastructure Layer ===
+  %% === Infrastructure Section ===
   subgraph Infra["🖥️ Infrastructure Layer"]
     E["🟨 EC2 Instance<br/>Amazon Linux 2023<br/>Web Application"]
     G["🟨 CloudWatch Dashboards<br/>Metrics & Alarms"]
     H["🟨 SNS Notifications<br/>Email Alerts"]
   end
-
 
   %% === Connections ===
   A -->|POST /wake| B
