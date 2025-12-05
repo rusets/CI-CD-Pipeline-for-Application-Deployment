@@ -32,7 +32,8 @@ env:
   AWS_ROLE_ARN: arn:aws:iam::097635932419:role/github-actions-ci-cd-pipeline-aws
   TARGET_ENV: ${{ inputs.target_env || 'dev' }}
   PROJECT_NAME: ruslan-aws
-  TF_VAR_reaper_function_name: ruslan-aws-dev-reaper
+  TF_ACTION: ${{ inputs.action || 'apply' }}
+  TF_VAR_reaper_function_name: ${{ inputs.target_env == 'prod' && 'ruslan-aws-prod-reaper' || 'ruslan-aws-dev-reaper' }}
 
 jobs:
   terraform:
@@ -60,7 +61,7 @@ jobs:
           terraform_version: 1.9.5
 
       - name: Terraform init
-        run: terraform init -upgrade
+        run: terraform init -upgrade -lock-timeout=300s
 
       - name: Terraform fmt & validate
         run: |
@@ -68,12 +69,12 @@ jobs:
           terraform validate
 
       - name: Terraform plan (${{ env.TARGET_ENV }})
-        run: terraform plan -no-color -var="environment=${TARGET_ENV}"
+        run: terraform plan -no-color -lock-timeout=300s -var="environment=${TARGET_ENV}"
 
       - name: Terraform apply
-        if: ${{ (inputs.action || 'apply') == 'apply' }}
-        run: terraform apply -auto-approve -var="environment=${TARGET_ENV}"
+        if: ${{ env.TF_ACTION == 'apply' }}
+        run: terraform apply -auto-approve -lock-timeout=300s -var="environment=${TARGET_ENV}"
 
       - name: Terraform destroy
-        if: ${{ (inputs.action || 'apply') == 'destroy' }}
-        run: terraform destroy -auto-approve -var="environment=${TARGET_ENV}"
+        if: ${{ env.TF_ACTION == 'destroy' }}
+        run: terraform destroy -auto-approve -lock-timeout=300s -var="environment=${TARGET_ENV}"

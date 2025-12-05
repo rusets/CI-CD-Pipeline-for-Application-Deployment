@@ -48,3 +48,13 @@ variable "ssm_param_last_wake" {
   type        = string
   default     = "/ci-wake/last_wake"
 }
+
+
+############################################
+# API Gateway custom domain name
+############################################
+variable "apigw_domain_name" {
+  type        = string
+  description = "Existing API Gateway v2 custom domain for ci-wake"
+  default     = "api.ci-wake.online"
+}

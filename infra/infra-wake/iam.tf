@@ -176,11 +176,11 @@ resource "aws_iam_policy" "gh_lambda_admin_all" {
   name   = "${var.project_name}-${var.environment}-gh-lambda-admin"
   policy = data.aws_iam_policy_document.gh_lambda_admin_all.json
 
-  lifecycle {
-    ignore_changes  = [policy]
-    prevent_destroy = true
-  }
+  #lifecycle {
+  # ignore_changes  = [policy]
+  # prevent_destroy = true
 }
+#}
 
 ############################################
 # IAM — Attach CI policy to OIDC role

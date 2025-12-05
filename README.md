@@ -1,15 +1,28 @@
-# 🚀 Ruslan AWS — CI/CD Pipeline for Application Deployment
+# CI/CD Pipeline for Application Deployment
 
-![Terraform](https://img.shields.io/badge/IaC-Terraform-blueviolet)
-![AWS](https://img.shields.io/badge/Cloud-AWS-orange)
-![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-lightgrey)
-![Domain](https://img.shields.io/badge/Domain-app.ci--wake.online-blue)
-![Status](https://img.shields.io/badge/State-Auto%20Wake%2FSleep-green)
-
+<p align="center">
+  <img src="https://img.shields.io/badge/IaC-Terraform-blueviolet" alt="Terraform"/>
+  <img src="https://img.shields.io/badge/Cloud-AWS-orange" alt="AWS"/>
+  <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-lightgrey" alt="GitHub Actions"/>
+  <img src="https://img.shields.io/badge/Runtime-Lambda-yellow" alt="Lambda"/>
+  <img src="https://img.shields.io/badge/Compute-EC2-blue" alt="EC2"/>
+  <img src="https://img.shields.io/badge/API-API%20Gateway-9cf" alt="API Gateway"/>
+  <img src="https://img.shields.io/badge/Scheduler-EventBridge-FF9900" alt="EventBridge"/>
+  <img src="https://img.shields.io/badge/Security-KMS%20Enabled-green" alt="KMS"/>
+  <img src="https://img.shields.io/badge/Validation-tfsec%20%7C%20tflint%20%7C%20checkov-brightgreen" alt="Validation"/>
+</p>
 
 ---
 
-## 🧠 Project Overview
+##  Live Demo
+
+ **Wait Page:** [https://app.ci-wake.online](https://app.ci-wake.online)  
+When you click **“Wake Up”**, the EC2 instance powers on automatically and the site becomes available.  
+After **5 minutes of inactivity**, it shuts down to save cost — all managed automatically by Lambda and CloudWatch.
+
+---
+
+##  Project Overview
 
 This project is a **fully automated infrastructure pipeline** for deploying and managing a web application on AWS using:
 
@@ -19,20 +32,21 @@ This project is a **fully automated infrastructure pipeline** for deploying and 
 - **Auto-wake page** — hosted on S3 + CloudFront with custom domain  
 - **Monitoring and alerts** — via CloudWatch and SNS  
 
-It demonstrates how to build a **production-grade CI/CD environment** that stays cost-efficient while showcasing real AWS automation.
+It demonstrates how to build a practical CI/CD environment using Terraform, GitHub Actions, and AWS serverless components.
 
 ---
 
-
-## 🌐 Live Demo
-
-🔹 **Wait Page:** [https://app.ci-wake.online](https://app.ci-wake.online)  
-When you click **“Wake Up”**, the EC2 instance powers on automatically and the site becomes available.  
-After **5 minutes of inactivity**, it shuts down to save cost — all managed automatically by Lambda and CloudWatch.
+## Features
+- Terraform for all infrastructure resources  
+- GitHub Actions OIDC workflow (no long-term AWS keys)  
+- Lambda-based wake/sleep automation  
+- EC2-hosted lightweight application  
+- CloudWatch logs, metrics, and SNS alerts  
+- Minimal cost when idle  
 
 ---
 
-## ⚙️ Architecture
+##  Architecture
 
 ```mermaid
 flowchart LR
@@ -75,11 +89,11 @@ flowchart LR
 
 ---
 
-## 🧩 Components
+##  Components
 
-### 🌩️ Infrastructure (Terraform)
+###  Infrastructure (Terraform)
 - **S3 backend + DynamoDB** — for Terraform state locking  
-- **EC2 instance** — Amazon Linux 2023 with Apache + auto-deploy site.zip  
+- **EC2 instance** — Amazon Linux 2023 running a simple demo app  
 - **IAM roles** — CloudWatch Agent & Lambda policies  
 - **Lambda functions:**
   - `wake`: starts the EC2 instance  
@@ -91,7 +105,7 @@ flowchart LR
 
 ---
 
-## 🚀 CI/CD Workflow (GitHub Actions)
+##  CI/CD Workflow (GitHub Actions)
 
 - **OIDC authentication** (no access keys)  
 - **Terraform plan/apply/destroy** pipeline  
@@ -100,19 +114,19 @@ flowchart LR
 
 ---
 
-## 💰 Cost Optimization
+##  Cost Optimization
 
 | Mechanism | Description |
 |------------|--------------|
-| 💤 **Auto Sleep** | EC2 automatically stops after 5 minutes of inactivity |
-| ⚡ **Wake on Demand** | EC2 starts only when user clicks “Wake Up” |
-| ☁️ **S3 + CloudFront** | Wait site is fully static (Always-Free) |
-| 🧠 **Serverless Control Plane** | Lambdas only run for milliseconds per event |
-| 💾 **State backend** | Terraform state stored in low-cost S3/DynamoDB |
+|  **Auto Sleep** | EC2 automatically stops after 5 minutes of inactivity |
+|  **Wake on Demand** | EC2 starts only when user clicks “Wake Up” |
+|  **S3 + CloudFront** | Wait site is fully static (Always-Free) |
+|  **Serverless Control Plane** | Lambdas only run for milliseconds per event |
+|  **State backend** | Terraform state stored in low-cost S3/DynamoDB |
 
 ---
 
-## 📊 Monitoring
+##  Monitoring
 
 CloudWatch Dashboard includes:
 
@@ -121,12 +135,12 @@ CloudWatch Dashboard includes:
 - **CWAgent** — memory and disk usage  
 - **SNS Alerts** — via email  
 
-### 🖥️ View in AWS Console
+###  View in AWS Console
 Go to **CloudWatch → Dashboards → ruslan-aws-dev-overview**
 
 ---
 
-## 🧪 Simulate Load (Trigger CloudWatch Alarm)
+##  Simulate Load (Trigger CloudWatch Alarm)
 
 To trigger the **CPU Utilization > 70%** alert on the EC2 instance, run this inside the EC2 terminal:
 
@@ -145,108 +159,79 @@ sudo stress-ng --cpu 4 --timeout 120
 ---
 
 
-## 🧾 Folder Structure
+## **Project Structure**
 
 ```
 ci-cd-pipeline-aws/
-├── app/
-│   └── public/
-│       ├── index.html
-│       └── assets/
-│           ├── css/
-│           └── js/
-├── infra/
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── providers.tf
-│   ├── backend.tf
-│   ├── outputs.tf
-│   ├── alarms.tf
-│   ├── dashboard.tf
-│   ├── sns.tf
-│   ├── user_data.sh
-│   ├── user_data.tpl
-│   └── infra-wake/
-│       ├── main.tf
-│       ├── iam.tf
-│       ├── schedule.tf
-│       ├── variables.tf
-│       ├── outputs.tf
-│       ├── backend.tf
-│       └── versions.tf
-├── lambdas/
-│   ├── wake/    └── index.js
-│   ├── status/  └── index.py
-│   ├── reaper/  └── index.py
-│   └── _common/ └── timeparse.py
-├── wait-site/
-│   ├── index.html
-│   └── assets/
-│       ├── css/
-│       └── js/
-├── scripts/
-│   ├── deploy_on_instance.sh
-│   └── app.service
-├── cloudwatch/
-│   └── amazon-cloudwatch-agent.json
-├── .github/workflows/
-│   ├── terraform.yml
-│   └── infra-wake.yml
-└── README.md
+├── app/                 # Frontend (Wake UI)
+├── infra/               # Terraform (core infrastructure)
+├── infra/infra-wake/    # Terraform (wake/status APIs, Lambdas, schedule)
+├── lambdas/             # Wake / Status / Reaper source code
+├── wait-site/           # Public wait page
+├── docs/                # Architecture & runbooks
+├── cloudwatch/          # CloudWatch agent config for EC2 logs/metrics
+├── scripts/             # Deployment & service scripts
+├── build/               # Auto-built Lambda ZIP artifacts
+├── .github/workflows/   # CI/CD (Terraform deploys)
+├── README.md            # Main documentation
+└── LICENSE              # MIT license for the project
 ```
+
+**Full detailed structure:** see [`docs/architecture.md`](./docs/architecture.md)
 
 ---
 
-## 🧠 Key Highlights
+##  Key Highlights
 - **Zero manual intervention:** Terraform handles all provisioning.  
 - **GitHub → AWS via OIDC:** no secrets in the repo.  
 - **Real cost control:** EC2 sleeps automatically after idle.  
-- **Visual dashboards:** live metrics and timeline of wake/sleep events.  
-- **Portfolio-ready:** clean architecture, full automation, real custom domains.
+- **Visual dashboards:** CloudWatch dashboard for basic EC2 and Lambda metrics.  
+- **Portfolio-ready:** clean architecture, full automation, custom domains configured via Route53 and CloudFront.
 
 ---
 
-## 🖼️ Screenshots — System in Action
+##  Screenshots — System in Action
 
 
-### 1️⃣ Wait Page — Before Wake-Up  
+###  Wait Page — Before Wake-Up  
 Shows the static landing page hosted on **S3 + CloudFront**, waiting for user interaction.  
 ![Wait Page](docs/screenshots/1-wait-page.png)
 
 ---
 
-### 2️⃣ Application Running — After Wake-Up  
+###  Application Running — After Wake-Up  
 Once the user clicks **“Wake Up”**, the EC2 instance starts and the application becomes accessible.  
 ![App Running](docs/screenshots/2-app-running.png)
 
 ---
 
-### 3️⃣ GitHub Actions — infra-wake.yml  
+###  GitHub Actions — infra-wake.yml  
 Triggered automatically or manually, this workflow deploys and updates the **serverless control plane**.  
 ![GitHub Actions Wake](docs/screenshots/3-github-actions-wake.png)
 
 ---
 
-### 4️⃣ GitHub Actions — terraform.yml  
+###  GitHub Actions — terraform.yml  
 Full Terraform CI/CD job applying infrastructure changes via **OIDC authentication** (no stored AWS keys).  
 ![GitHub Actions Terraform](docs/screenshots/4-github-actions-terraform.png)
 
 ---
 
-### 5️⃣ CloudWatch Dashboard  
+###  CloudWatch Dashboard  
 Live metrics showing EC2 CPU.  
 ![CloudWatch Dashboard](docs/screenshots/5-cloudwatch-dashboard.png)
 
 ---
 
-### 6️⃣ SNS Email Alert  
+###  SNS Email Alert  
 Example of a real **CloudWatch → SNS** notification delivered to email when an alarm triggers.  
 ![SNS Alert Email](docs/screenshots/6-sns-alert-email.png)
 
 ---
 
-## 🧾 License
+## License
 
-Released under the **MIT License** — feel free to use, fork, and learn from it.  
-© Ruslan Dashkin (🚀Ruslan AWS)
-Branding name “🚀Ruslan AWS” and related visuals are protected; commercial reuse or rebranding without permission is prohibited.
+Released under the MIT License.  
+See the LICENSE file for full details.
+
+Branding name “🚀 Ruslan AWS” and related visuals may not be reused or rebranded without permission.

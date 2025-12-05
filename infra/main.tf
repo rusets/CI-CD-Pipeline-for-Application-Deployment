@@ -4,8 +4,6 @@
 locals {
   project_root = abspath("${path.module}/..")
   site_dir     = "${local.project_root}/app/public"
-  name_prefix  = "${var.project_name}-${var.environment}"
-
   common_tags = {
     Project     = var.project_name
     Environment = var.environment
@@ -59,6 +57,8 @@ data "archive_file" "site_zip" {
 ############################################
 # Security Group — HTTP only (no SSH, no IPv6)
 ############################################
+#tfsec:ignore:aws-ec2-no-public-ingress-sgr
+#tfsec:ignore:aws-ec2-no-public-egress-sgr
 resource "aws_security_group" "app_sg" {
   name        = "${var.project_name}-${var.environment}-sg"
   description = "Allow HTTP traffic only"
@@ -102,6 +102,15 @@ resource "aws_instance" "app" {
     ENVIRONMENT  = var.environment
     ARCHIVE_B64  = filebase64(data.archive_file.site_zip.output_path)
   })
+
+  root_block_device {
+    encrypted = true
+  }
+
+  metadata_options {
+    http_tokens   = "required"
+    http_endpoint = "enabled"
+  }
 
   tags = merge(local.common_tags, {
     Name = "${var.project_name}-${var.environment}"

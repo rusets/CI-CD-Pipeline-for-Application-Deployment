@@ -1,32 +1,314 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Ruslan AWS — Neon Wait</title>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/css/style.css?v=6"/>
-  <meta name="color-scheme" content="dark light">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ruslan AWS — Wake Console</title>
+<style>
+:root{--bg:#070711;--fg:#e8f7ff;--muted:#a8b2c6;--glass:rgba(255,255,255,.06);--glass-border:rgba(255,255,255,.16);--accent:#00eaff;--ok:#00ffb4;--warn:#ffcc00}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--fg);font-family:Manrope,Inter,system-ui,Segoe UI,Roboto,sans-serif;display:grid;place-items:center;overflow:hidden}
+.brand{position:fixed;top:14px;left:16px;z-index:10;display:flex;gap:8px;align-items:center;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.brand-link{display:flex;gap:8px;align-items:center;text-decoration:none;font-weight:700;letter-spacing:.2px;color:inherit;transition:opacity .25s ease}
+.brand-link:hover{opacity:.8}
+.brand .txt{background:linear-gradient(90deg,#00eaff,#a677ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.glowTL,.glowBR{position:fixed;width:60vmax;height:60vmax;border-radius:50%;filter:blur(120px);opacity:.5;z-index:0}
+.glowTL{top:-20vmax;left:-15vmax;background:radial-gradient(circle,#00eaff,transparent 60%)}
+.glowBR{right:-20vmax;bottom:-15vmax;background:radial-gradient(circle,#ff00cc,transparent 60%)}
+.grid{position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:40px 40px;mask-image:radial-gradient(circle at center,black 60%,transparent 80%)}
+.card{position:relative;z-index:2;width:min(680px,92vw);padding:46px 38px;border-radius:18px;background:var(--glass);border:1px solid var(--glass-border);backdrop-filter:blur(10px);text-align:center;box-shadow:0 10px 60px rgba(0,0,0,.4)}
+h1{margin:0 0 8px;color:#bdf8ff;text-shadow:0 0 14px #00eaff55;font-size:2.1rem}
+p.sub{margin:0 0 18px;color:#c4cfde}
+.progress{margin:16px auto 8px;width:90%;max-width:560px;text-align:left}
+.bar-wrap{height:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);border-radius:999px;overflow:hidden}
+.bar{height:100%;width:0%;background:linear-gradient(90deg,#ff00cc,#ff8800,#00ffd5,#00aaff,#a677ff);background-size:200% 100%;animation:barFlow 7s ease infinite}
+@keyframes barFlow{50%{background-position:100% 0}}
+.stages{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.stage{padding:8px 6px;border-radius:10px;text-align:center;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:var(--muted);font-weight:600;font-size:.9rem}
+.stage.done{color:var(--ok);border-color:rgba(0,255,180,.65);box-shadow:0 0 16px rgba(0,255,180,.15) inset}
+.stage.active{color:#fff;border-color:#00eaff;box-shadow:0 0 18px rgba(0,234,255,.2) inset}
+.loader{width:78px;height:78px;margin:18px auto;border:3px solid rgba(255,255,255,.18);border-left-color:#ff00cc;border-right-color:#00eaff;border-radius:50%;animation:spin 2.4s linear infinite;animation-play-state:paused}
+.loader.go{animation-play-state:running}
+.loader.stop{animation-play-state:paused;opacity:.7;border-left-color:var(--ok);border-right-color:var(--ok)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:6px}
+button{appearance:none;border:none;border-radius:10px;padding:12px 22px;font-weight:700;letter-spacing:.4px;cursor:pointer;transition:.25s;font-variant-numeric:tabular-nums}
+#wake,#open{background:rgba(0,255,180,.08);border:1px solid #00ffb4;color:#00ffb4;min-width:200px;height:48px}
+#wake:disabled,#open:disabled{opacity:.45;border-color:#3a5;color:#7aa;cursor:not-allowed}
+#wake:hover:not(:disabled),#open:hover:not(:disabled){box-shadow:0 0 24px rgba(0,255,180,.18) inset,0 0 22px rgba(0,255,180,.15);transform:translateY(-1px)}
+.warn{display:none;margin:12px auto 0;max-width:560px;background:rgba(255,204,0,.12);border:1px solid rgba(255,204,0,.6);color:#ffe07a;border-radius:10px;padding:10px 12px;font-weight:700}
+.warn.show{display:block}
+.eta{font-variant-numeric:tabular-nums;color:#bfefff}
+footer{position:fixed;bottom:12px;width:100%;text-align:center;color:#94a1b2}
+.status-line{color:var(--muted);margin-top:10px}
+.status-line strong{color:#e8f7ff}
+</style>
 </head>
 <body>
-  <header class="brand"><a class="brand__link" href="https://rusets.com" target="_blank" rel="noopener">Ruslan AWS 🚀</a></header>
+<div class="brand">
+  <a href="https://rusets.com" target="_blank" rel="noopener noreferrer" class="brand-link">
+    🚀 <span class="txt">Ruslan AWS</span>
+  </a>
+</div>
+<div class="glowTL"></div><div class="glowBR"></div><div class="grid"></div>
 
-  <div class="aurora"></div>
-  <div class="grid"></div>
+<main class="card">
+  <h1>Wake EC2 Demo</h1>
+  <p class="sub" id="subtitle">Click “Wake up” to start the instance.</p>
 
-  <main class="center">
-    <section class="panel">
-      <h1 class="title">Wake Up Services</h1>
-      <p class="subtitle" data-status>Environment is sleeping. Click to start.</p>
-      <div class="actions">
-        <button class="btn" data-wake>Wake Up</button>
-      </div>
-      <div class="progress"><div class="bar" data-bar></div></div>
-      <div class="note">Redirect happens automatically when ready.</div>
-    </section>
-  </main>
+  <div class="progress">
+    <div class="bar-wrap"><div class="bar" id="bar"></div></div>
+    <div class="stages">
+      <div class="stage" id="s1">Stopped</div>
+      <div class="stage" id="s2">Starting</div>
+      <div class="stage" id="s3">Running</div>
+      <div class="stage" id="s4">App</div>
+    </div>
+  </div>
 
-  <script src="/assets/js/app.js?v=7"></script>
-</body>
-</html>
+  <div class="loader" id="spinner"></div>
+
+  <div class="row">
+    <button id="wake">Wake up</button>
+    <button id="open" disabled>Open App</button>
+  </div>
+
+  <p class="status-line" id="status-text">
+    Status: <strong>unknown</strong>
+  </p>
+  <p id="eta-line" class="status-line">
+    EC2 state is polled every 2s.
+  </p>
+  <div id="warn" class="warn">⚠️ Please keep this tab open while the instance is starting.</div>
+</main>
+
+<footer>Built with AWS · Terraform · GitHub Actions</footer>
+
+<script>
+const WAKE_URL = "https://api.ci-wake.online/wake";
+const STATUS_URL = "https://api.ci-wake.online/status";
+
+const BTN_WAKE = document.getElementById("wake");
+const BTN_OPEN = document.getElementById("open");
+const TEXT = document.getElementById("status-text");
+const SUB = document.getElementById("subtitle");
+const BAR = document.getElementById("bar");
+const SPINNER = document.getElementById("spinner");
+const WARN = document.getElementById("warn");
+const ETA_LINE = document.getElementById("eta-line");
+
+const STAGES = [
+  document.getElementById("s1"),
+  document.getElementById("s2"),
+  document.getElementById("s3"),
+  document.getElementById("s4")
+];
+
+let statusTimer = null;
+let cooldownTimer = null;
+let lastIp = "";
+let lastDns = "";
+
+const COOLDOWN_MS = 5 * 60 * 1000;
+const COOLDOWN_KEY = "ci_wake_last_wake_until";
+
+function getCooldownLeftMs() {
+  try {
+    const v = localStorage.getItem(COOLDOWN_KEY);
+    if (!v) return 0;
+    const until = parseInt(v, 10);
+    if (Number.isNaN(until)) return 0;
+    const left = until - Date.now();
+    return left > 0 ? left : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+function setCooldown() {
+  try {
+    const until = Date.now() + COOLDOWN_MS;
+    localStorage.setItem(COOLDOWN_KEY, String(until));
+  } catch (e) {}
+}
+
+function clearCooldown() {
+  try {
+    localStorage.removeItem(COOLDOWN_KEY);
+  } catch (e) {}
+}
+
+function fmtMMSSFromMs(ms) {
+  const totalSec = Math.ceil(ms / 1000);
+  const m = String(Math.floor(totalSec / 60)).padStart(2, "0");
+  const s = String(totalSec % 60).padStart(2, "0");
+  return m + ":" + s;
+}
+
+function applyCooldownUI() {
+  const left = getCooldownLeftMs();
+  if (left > 0) {
+    BTN_WAKE.disabled = true;
+    BTN_WAKE.textContent = "Wake up " + fmtMMSSFromMs(left);
+  } else {
+    BTN_WAKE.disabled = false;
+    BTN_WAKE.textContent = "Wake up";
+  }
+}
+
+function startCooldownLoop() {
+  if (cooldownTimer) return;
+  cooldownTimer = setInterval(() => {
+    const left = getCooldownLeftMs();
+    if (left <= 0) {
+      clearInterval(cooldownTimer);
+      cooldownTimer = null;
+      clearCooldown();
+    }
+    applyCooldownUI();
+  }, 1000);
+}
+
+function setStageIndex(i){
+  STAGES.forEach((el, idx) => {
+    el.classList.remove("active","done");
+    if(idx < i) el.classList.add("done");
+    if(idx === i) el.classList.add("active");
+  });
+}
+
+function setBarPercent(p){
+  const pct = Math.max(0, Math.min(100, p));
+  BAR.style.width = pct + "%";
+}
+
+function setStatusText(state, ip){
+  const s = state || "unknown";
+  const span = TEXT.querySelector("strong");
+  span.textContent = ip ? s + " — " + ip : s;
+}
+
+function showIdle(){
+  SPINNER.classList.remove("go","stop");
+  WARN.classList.remove("show");
+  setStageIndex(0);
+  setBarPercent(0);
+  SUB.textContent = "Click “Wake up” to start the instance.";
+  BTN_OPEN.disabled = true;
+  BTN_OPEN.textContent = "Open App";
+  setStatusText("stopped", "");
+  applyCooldownUI();
+}
+
+function showStarting(state){
+  SPINNER.classList.add("go");
+  WARN.classList.add("show");
+  setStageIndex(1);
+  setBarPercent(40);
+  SUB.textContent = "Starting EC2 instance…";
+  BTN_OPEN.disabled = true;
+  BTN_OPEN.textContent = "Open App";
+  setStatusText(state, "");
+  applyCooldownUI();
+}
+
+function showRunning(state, ip, dns){
+  SPINNER.classList.remove("go");
+  SPINNER.classList.add("stop");
+  WARN.classList.remove("show");
+  setStageIndex(3);
+  setBarPercent(100);
+  SUB.textContent = "Instance is running. Open the demo app.";
+  BTN_OPEN.disabled = false;
+  BTN_OPEN.textContent = "Open App";
+  lastIp = ip || "";
+  lastDns = dns || "";
+  setStatusText(state, ip || dns || "");
+  applyCooldownUI();
+}
+
+async function fetchStatusOnce(){
+  const res = await fetch(STATUS_URL + "?t=" + Date.now(), { cache: "no-store" });
+  const data = await res.json();
+  const state = String(data.state || "").toLowerCase();
+  const ip = data.publicIp || data.public_ip || "";
+  const dns = data.publicDns || data.public_dns || "";
+  updateUIFromState(state, ip, dns);
+}
+
+function updateUIFromState(state, ip, dns){
+  if(state === "running"){
+    showRunning(state, ip, dns);
+  }else if(state === "stopped"){
+    showIdle();
+  }else if(state === "pending" || state === "stopping"){
+    showStarting(state);
+  }else{
+    setStatusText(state || "unknown", "");
+    applyCooldownUI();
+  }
+}
+
+function startStatusLoop(){
+  if(statusTimer) return;
+  fetchStatusOnce().catch(()=>{});
+  statusTimer = setInterval(() => {
+    fetchStatusOnce().catch(()=>{});
+  }, 2000);
+}
+
+function stopStatusLoop(){
+  if(statusTimer){
+    clearInterval(statusTimer);
+    statusTimer = null;
+  }
+}
+
+BTN_WAKE.addEventListener("click", async () => {
+  if (getCooldownLeftMs() > 0) {
+    applyCooldownUI();
+    return;
+  }
+
+  setCooldown();
+  applyCooldownUI();
+  startCooldownLoop();
+
+  try{
+    SUB.textContent = "Sending wake request…";
+    setStatusText("waking…", "");
+    SPINNER.classList.add("go");
+    WARN.classList.add("show");
+    await fetch(WAKE_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ reason: "manual" }),
+      cache: "no-store",
+      mode: "cors",
+      credentials: "omit"
+    });
+  }catch(e){
+    SUB.textContent = "Wake error.";
+    setStatusText("wake error", "");
+  }
+  startStatusLoop();
+});
+
+BTN_OPEN.addEventListener("click", () => {
+  if(!lastIp && !lastDns) return;
+  const base = lastDns || lastIp;
+  const url = "http://" + base + "/";
+  window.location.href = url;
+});
+
+(function init(){
+  setStageIndex(0);
+  setBarPercent(0);
+  ETA_LINE.textContent = "EC2 state is polled every 2s.";
+  applyCooldownUI();
+  if (getCooldownLeftMs() > 0) {
+    startCooldownLoop();
+  }
+  startStatusLoop();
+})();
+</script>

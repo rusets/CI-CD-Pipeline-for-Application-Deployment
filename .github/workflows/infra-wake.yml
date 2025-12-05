@@ -35,10 +35,11 @@ env:
   TF_VAR_instance_tag_key: Name
   TF_VAR_instance_tag_value: ruslan-aws-dev
   TF_VAR_idle_minutes: "5"
+  TF_ACTION: ${{ github.event_name == 'workflow_dispatch' && inputs.action || 'apply' }}
 
 jobs:
   terraform:
-    name: Terraform (${{ inputs.action || 'apply' }}) — infra-wake
+    name: Terraform (${{ github.event_name == 'workflow_dispatch' && inputs.action || 'apply' }}) — infra-wake
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -84,16 +85,16 @@ jobs:
           terraform validate
 
       - name: Terraform plan
-        run: terraform plan -no-color -refresh=false -lock-timeout=300s -var="environment=${ENVIRONMENT}"
+        run: terraform plan -no-color -lock-timeout=300s -var="environment=${ENVIRONMENT}"
 
       - name: Terraform apply
-        if: ${{ (inputs.action || 'apply') == 'apply' }}
-        run: terraform apply -auto-approve -refresh=false -lock-timeout=300s -var="environment=${ENVIRONMENT}"
+        if: ${{ env.TF_ACTION == 'apply' }}
+        run: terraform apply -auto-approve -lock-timeout=300s -var="environment=${ENVIRONMENT}"
 
       - name: Show outputs
-        if: ${{ (inputs.action || 'apply') == 'apply' }}
+        if: ${{ env.TF_ACTION == 'apply' }}
         run: terraform output -json | jq -r 'to_entries[] | "\(.key)=\(.value.value)"'
 
       - name: Terraform destroy
-        if: ${{ (inputs.action || 'apply') == 'destroy' }}
-        run: terraform destroy -auto-approve -refresh=false -lock-timeout=300s -var="environment=${ENVIRONMENT}"
+        if: ${{ env.TF_ACTION == 'destroy' }}
+        run: terraform destroy -auto-approve -lock-timeout=300s -var="environment=${ENVIRONMENT}"

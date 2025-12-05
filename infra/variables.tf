@@ -42,12 +42,6 @@ variable "key_name" {
   default     = ""
 }
 
-variable "ssh_ingress_cidr" {
-  description = "Optional CIDR allowed for SSH (e.g. 1.2.3.4/32). Leave empty to disable SSH"
-  type        = string
-  default     = ""
-}
-
 variable "alert_email" {
   description = "Email address for CloudWatch alarms (optional)"
   type        = string

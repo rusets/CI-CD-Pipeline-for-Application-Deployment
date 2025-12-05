@@ -1,9 +1,22 @@
 ############################################
-# SNS Topic — CloudWatch alarms
+# KMS key — SNS topic encryption
+############################################
+resource "aws_kms_key" "sns" {
+  description         = "KMS key for SNS alerts (${var.project_name}-${var.environment})"
+  enable_key_rotation = true
+
+  tags = merge(local.common_tags, {
+    Name = "${var.project_name}-${var.environment}-sns-kms"
+  })
+}
+
+############################################
+# SNS Topic — CloudWatch alarms (encrypted with CMK)
 ############################################
 resource "aws_sns_topic" "alerts" {
-  name = "${var.project_name}-${var.environment}-alerts"
-  tags = local.common_tags
+  name              = "${var.project_name}-${var.environment}-alerts"
+  kms_master_key_id = aws_kms_key.sns.arn
+  tags              = local.common_tags
 }
 
 ############################################

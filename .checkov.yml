@@ -1,0 +1,47 @@
+skip-check:
+  # Lambda concurrency limit for small scheduled functions (reaper)
+  - CKV_AWS_115
+
+  # Public HTTP ingress and full egress are expected for this demo SG
+  - CKV_AWS_260
+  - CKV_AWS_382
+
+  # EC2 is intentionally public and used as a demo endpoint
+  - CKV_AWS_88
+
+  # Detailed monitoring disabled on purpose to reduce costs
+  - CKV_AWS_126
+
+  # EBS optimization is managed automatically by AWS for this AMI
+  - CKV_AWS_135
+
+  # KMS key policy handled outside of this minimal demo (infra KMS for SNS)
+  - CKV2_AWS_64
+
+  # --- infra-wake Lambda checks we intentionally skip ---
+
+  # DLQ for tiny Lambdas (status/reaper) is overkill in this demo
+  - CKV_AWS_116
+
+  # Lambda env var encryption via custom KMS key (no secrets stored there)
+  - CKV_AWS_173
+
+  # Lambda code-signing validation (not needed for this internal demo)
+  - CKV_AWS_272
+
+  # X-Ray tracing for reaper (not required here)
+  - CKV_AWS_50
+
+  # Lambda in VPC (these Lambdas only call public AWS APIs)
+  - CKV_AWS_117
+
+  # --- API Gateway & IAM checks for infra-wake ---
+
+  # Routes are intentionally unauthenticated (public wake/status API)
+  - CKV_AWS_309
+
+  # Access logging on HTTP API disabled for simplicity in this demo
+  - CKV_AWS_76
+
+  # GitHub admin policy intentionally broad for CI/CD in this account
+  - CKV_AWS_356
