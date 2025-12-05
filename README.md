@@ -16,7 +16,7 @@
 
 ##  Live Demo
 
- **Wait Page:** [https://app.ci-wake.online](https://app.ci-wake.online)  
+ **Wait Page:** [https://api.ci-wake.online](https://app.ci-wake.online)  
 When you click **“Wake Up”**, the EC2 instance powers on automatically and the site becomes available.  
 After **5 minutes of inactivity**, it shuts down to save cost — all managed automatically by Lambda and CloudWatch.
 
