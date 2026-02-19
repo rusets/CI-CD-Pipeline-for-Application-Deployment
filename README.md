@@ -1,38 +1,36 @@
-# CI/CD Pipeline for Application Deployment
+# CI/CD Pipeline for Application Deployment — EC2 + Scale-to-Zero 
 
 <p align="center">
   <img src="https://img.shields.io/badge/IaC-Terraform-blueviolet" alt="Terraform"/>
   <img src="https://img.shields.io/badge/Cloud-AWS-orange" alt="AWS"/>
   <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-lightgrey" alt="GitHub Actions"/>
-  <img src="https://img.shields.io/badge/Runtime-Lambda-yellow" alt="Lambda"/>
-  <img src="https://img.shields.io/badge/Compute-EC2-blue" alt="EC2"/>
-  <img src="https://img.shields.io/badge/API-API%20Gateway-9cf" alt="API Gateway"/>
-  <img src="https://img.shields.io/badge/Scheduler-EventBridge-FF9900" alt="EventBridge"/>
-  <img src="https://img.shields.io/badge/Security-KMS%20Enabled-green" alt="KMS"/>
-  <img src="https://img.shields.io/badge/Validation-tfsec%20%7C%20tflint%20%7C%20checkov-brightgreen" alt="Validation"/>
+  <img src="https://img.shields.io/badge/Compute-EC2%20%7C%20Lambda-blue" alt="Compute"/>
+  <img src="https://img.shields.io/badge/API-API%20Gateway%20%7C%20EventBridge-9cf" alt="API"/>
+  <img src="https://img.shields.io/badge/Security-KMS%20%7C%20tfsec%20%7C%20tflint%20%7C%20checkov-green" alt="Security"/>
 </p>
+---
+
+## Live Environment
+
+**Access:** https://app.ci-wake.online  
+
+Click **“Wake Up”** to start the EC2 instance and bring the application online.  
+If no activity is detected for 5 minutes, the instance is stopped automatically to optimize cost.  
+The lifecycle is managed through Lambda and CloudWatch.
 
 ---
 
-##  Live Demo
+## Project Overview
 
- **Wait Page:** [https://app.ci-wake.online](https://app.ci-wake.online)  
-When you click **“Wake Up”**, the EC2 instance powers on automatically and the site becomes available.  
-After **5 minutes of inactivity**, it shuts down to save cost — all managed automatically by Lambda and CloudWatch.
+I built this project as a fully automated infrastructure pipeline for deploying and managing an application on AWS using:
 
----
+- **Terraform** — Infrastructure as Code  
+- **GitHub Actions (OIDC)** — secure CI/CD automation  
+- **Serverless control plane** — Lambda-based wake/sleep orchestration  
+- **Static entry point** — S3 + CloudFront with a custom domain  
+- **Monitoring and alerts** — CloudWatch dashboards and SNS notifications  
 
-##  Project Overview
-
-This project is a **fully automated infrastructure pipeline** for deploying and managing a web application on AWS using:
-
-- **Terraform** — full Infrastructure as Code  
-- **GitHub Actions (OIDC)** — CI/CD automation  
-- **Serverless control plane** — Lambda functions for wake/sleep logic  
-- **Auto-wake page** — hosted on S3 + CloudFront with custom domain  
-- **Monitoring and alerts** — via CloudWatch and SNS  
-
-It demonstrates how to build a practical CI/CD environment using Terraform, GitHub Actions, and AWS serverless components.
+The goal was to design a practical CI/CD architecture that integrates Infrastructure as Code, serverless automation, and cost-aware compute lifecycle management.
 
 ---
 
@@ -89,19 +87,20 @@ flowchart LR
 
 ---
 
-##  Components
+## Components
 
-###  Infrastructure (Terraform)
-- **S3 backend + DynamoDB** — for Terraform state locking  
-- **EC2 instance** — Amazon Linux 2023 running a simple demo app  
-- **IAM roles** — CloudWatch Agent & Lambda policies  
+### Infrastructure (Terraform)
+
+- **S3 backend + DynamoDB** — remote state storage with locking  
+- **EC2 instance** — Amazon Linux 2023 hosting the application workload  
+- **IAM roles** — scoped permissions for EC2, Lambda, and CloudWatch  
 - **Lambda functions:**
-  - `wake`: starts the EC2 instance  
-  - `status`: checks EC2 state and public IP  
-  - `reaper`: auto-stops instance after idle period  
-- **EventBridge rule** — triggers `reaper` every minute  
-- **CloudWatch dashboard** — metrics for CPU, status checks, Lambda invocations  
-- **SNS alerts** — email when CPU > 70% or EC2 fails health check  
+  - `wake` — starts the EC2 instance  
+  - `status` — retrieves EC2 state and public endpoint  
+  - `reaper` — stops the instance after an idle threshold  
+- **EventBridge rule** — scheduled trigger for the `reaper` function  
+- **CloudWatch dashboard** — visibility into EC2 and Lambda metrics  
+- **SNS alerts** — notifications for CPU thresholds and health check failures  
 
 ---
 
@@ -231,7 +230,6 @@ Example of a real **CloudWatch → SNS** notification delivered to email when an
 
 ## License
 
-Released under the MIT License.  
-See the LICENSE file for full details.
+This project is released under the MIT License.
 
-Branding name “🚀 Ruslan AWS” and related visuals may not be reused or rebranded without permission.
+See the `LICENSE` file for details.
