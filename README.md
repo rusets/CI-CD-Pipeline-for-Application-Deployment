@@ -8,7 +8,6 @@
   <img src="https://img.shields.io/badge/API-API%20Gateway%20%7C%20EventBridge-9cf" alt="API"/>
   <img src="https://img.shields.io/badge/Security-KMS%20%7C%20tfsec%20%7C%20tflint%20%7C%20checkov-green" alt="Security"/>
 </p>
----
 
 ## Live Environment
 
